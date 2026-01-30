@@ -7,51 +7,175 @@
 #ifndef _NTPEBTEB_H
 #define _NTPEBTEB_H
 
+#ifdef __has_include
+#if __has_include (<ntgdi.h>)
+#include <ntgdi.h>
+#endif // __has_include
+#if __has_include (<ntsxs.h>)
 #include <ntsxs.h>
+#endif // __has_include
+#endif // __has_include
 
+typedef struct _APPCOMPAT_EXE_DATA APPCOMPAT_EXE_DATA, *PAPPCOMPAT_EXE_DATA;
 typedef struct _RTL_USER_PROCESS_PARAMETERS *PRTL_USER_PROCESS_PARAMETERS;
 typedef struct _RTL_CRITICAL_SECTION *PRTL_CRITICAL_SECTION;
 typedef struct _SILO_USER_SHARED_DATA *PSILO_USER_SHARED_DATA;
+typedef struct _LDR_RESLOADER_RET LDR_RESLOADER_RET, *PLDR_RESLOADER_RET;
 typedef struct _LEAP_SECOND_DATA *PLEAP_SECOND_DATA;
 typedef struct _PEB_LDR_DATA PEB_LDR_DATA, *PPEB_LDR_DATA;
+typedef struct tagSOleTlsData SOleTlsData, *PSOleTlsData;
+typedef struct _KERNEL_CALLBACK_TABLE KERNEL_CALLBACK_TABLE, *PKERNEL_CALLBACK_TABLE;
+typedef struct _GDI_HANDLE_ENTRY GDI_HANDLE_ENTRY, *PGDI_HANDLE_ENTRY;
 
 // PEB->AppCompatFlags
-#define KACF_OLDGETSHORTPATHNAME 0x00000001
-#define KACF_VERSIONLIE_NOT_USED 0x00000002
-#define KACF_GETTEMPPATH_NOT_USED 0x00000004
-#define KACF_GETDISKFREESPACE 0x00000008
-#define KACF_FTMFROMCURRENTAPT 0x00000020
-#define KACF_DISALLOWORBINDINGCHANGES 0x00000040
-#define KACF_OLE32VALIDATEPTRS 0x00000080
-#define KACF_DISABLECICERO 0x00000100
-#define KACF_OLE32ENABLEASYNCDOCFILE 0x00000200
-#define KACF_OLE32ENABLELEGACYEXCEPTIONHANDLING 0x00000400
-#define KACF_RPCDISABLENDRCLIENTHARDENING 0x00000800
-#define KACF_RPCDISABLENDRMAYBENULL_SIZEIS 0x00001000
-#define KACF_DISABLEALLDDEHACK_NOT_USED 0x00002000
-#define KACF_RPCDISABLENDR61_RANGE 0x00004000
-#define KACF_RPC32ENABLELEGACYEXCEPTIONHANDLING 0x00008000
-#define KACF_OLE32DOCFILEUSELEGACYNTFSFLAGS 0x00010000
-#define KACF_RPCDISABLENDRCONSTIIDCHECK 0x00020000
-#define KACF_USERDISABLEFORWARDERPATCH 0x00040000
-#define KACF_OLE32DISABLENEW_WMPAINT_DISPATCH 0x00100000
-#define KACF_ADDRESTRICTEDSIDINCOINITIALIZESECURITY 0x00200000
-#define KACF_ALLOCDEBUGINFOFORCRITSECTIONS 0x00400000
-#define KACF_OLEAUT32ENABLEUNSAFELOADTYPELIBRELATIVE 0x00800000
-#define KACF_ALLOWMAXIMIZEDWINDOWGAMMA 0x01000000
-#define KACF_DONOTADDTOCACHE 0x80000000
+#define KACF_OLDGETSHORTPATHNAME                      0x00000001
+#define KACF_VERSIONLIE_NOT_USED                      0x00000002
+#define KACF_GETTEMPPATH_NOT_USED                     0x00000004
+#define KACF_GETDISKFREESPACE                         0x00000008
+#define KACF_FTMFROMCURRENTAPT                        0x00000020
+#define KACF_DISALLOWORBINDINGCHANGES                 0x00000040
+#define KACF_OLE32VALIDATEPTRS                        0x00000080
+#define KACF_DISABLECICERO                            0x00000100
+#define KACF_OLE32ENABLEASYNCDOCFILE                  0x00000200
+#define KACF_OLE32ENABLELEGACYEXCEPTIONHANDLING       0x00000400
+#define KACF_RPCDISABLENDRCLIENTHARDENING             0x00000800
+#define KACF_RPCDISABLENDRMAYBENULL_SIZEIS            0x00001000
+#define KACF_DISABLEALLDDEHACK_NOT_USED               0x00002000
+#define KACF_RPCDISABLENDR61_RANGE                    0x00004000
+#define KACF_RPC32ENABLELEGACYEXCEPTIONHANDLING       0x00008000
+#define KACF_OLE32DOCFILEUSELEGACYNTFSFLAGS           0x00010000
+#define KACF_RPCDISABLENDRCONSTIIDCHECK               0x00020000
+#define KACF_USERDISABLEFORWARDERPATCH                0x00040000
+#define KACF_OLE32DISABLENEW_WMPAINT_DISPATCH         0x00100000
+#define KACF_ADDRESTRICTEDSIDINCOINITIALIZESECURITY   0x00200000
+#define KACF_ALLOCDEBUGINFOFORCRITSECTIONS            0x00400000
+#define KACF_OLEAUT32ENABLEUNSAFELOADTYPELIBRELATIVE  0x00800000
+#define KACF_ALLOWMAXIMIZEDWINDOWGAMMA                0x01000000
+#define KACF_DONOTADDTOCACHE                          0x80000000
+#define KACF_DISABLEPOSIXDELETEFILE                   0x100000000 // rev KernelBase!InternalDeleteFileW
+#define KACF_ENABLE_PROCESS_SYSTEMDPIAWARENESS        0x20000000000000 // rev // Enable Per-Process System DPI Awareness and Opt-in to Per-Process System DPI mode.
+#define KACF_DISABLE_PROCESS_SYSTEMDPIAWARENESS       0x40000000000000 // rev // Disable Per-Process System DPI Awareness and force legacy DPI behavior.
+#define KACF_ENABLE_GDI_DPI_SCALING                   0x800000000000000
+#define KACF_FORCE_DISABLE_GDI_SCALING                0x4000000000000000
 
-// PEB->ApiSetMap
-typedef struct _API_SET_NAMESPACE
+// PEB->CrossProcessFlags
+#define PEB_FLAG_PROCESS_IN_JOB                       0x00000001 // Process is part of a job
+#define PEB_FLAG_PROCESS_INITIALIZING                 0x00000002 // Process is initializing
+#define PEB_FLAG_PROCESS_USING_VEH                    0x00000004 // Process is using VEH
+#define PEB_FLAG_PROCESS_USING_VCH                    0x00000008 // Process is using VCH
+#define PEB_FLAG_PROCESS_USING_FTH                    0x00000010 // Process is using FTH
+#define PEB_FLAG_PROCESS_PREVIOUSLY_THROTTLED         0x00000020 // Process was previously throttled
+#define PEB_FLAG_PROCESS_CURRENTLY_THROTTLED          0x00000040 // Process is currently throttled
+#define PEB_FLAG_PROCESS_IMAGES_HOT_PATCHED           0x00000080 // Process images are hot patched (RS5+)
+
+// private
+#define API_SET_SECTION_NAME ".apiset"
+
+// private
+#define API_SET_SCHEMA_VERSION_V2 0x00000002 // WIN7, WIN8
+#define API_SET_SCHEMA_VERSION_V4 0x00000004 // WINBLUE
+#define API_SET_SCHEMA_VERSION_V6 0x00000006 // since THRESHOLD
+#define API_SET_SCHEMA_VERSION API_SET_SCHEMA_VERSION_V6
+
+// private
+#define API_SET_SCHEMA_FLAGS_SEALED 0x00000001
+#define API_SET_SCHEMA_FLAGS_HOST_EXTENSION 0x00000002
+
+// private
+#define API_SET_SCHEMA_ENTRY_FLAGS_SEALED 0x00000001
+#define API_SET_SCHEMA_ENTRY_FLAGS_EXTENSION 0x00000002
+
+// private
+typedef struct _API_SET_VALUE_ENTRY_V2
 {
-    ULONG Version;
-    ULONG Size;
+    ULONG NameOffset; // to WCHAR[NameLength / sizeof(WCHAR)], from schema base
+    ULONG NameLength;
+    ULONG ValueOffset; // to WCHAR[ValueLength / sizeof(WCHAR)], from schema base
+    ULONG ValueLength;
+} API_SET_VALUE_ENTRY_V2, *PAPI_SET_VALUE_ENTRY_V2;
+
+// private
+typedef struct _API_SET_VALUE_ARRAY_V2
+{
+    ULONG Count;
+    _Field_size_full_(Count) API_SET_VALUE_ENTRY_V2 Array[ANYSIZE_ARRAY];
+} API_SET_VALUE_ARRAY_V2, *PAPI_SET_VALUE_ARRAY_V2;
+
+// private
+typedef struct _API_SET_NAMESPACE_ENTRY_V2
+{
+    ULONG NameOffset; // to WCHAR[NameLength / sizeof(WCHAR)], from schema base
+    ULONG NameLength;
+    ULONG DataOffset; // to API_SET_VALUE_ARRAY_V2, from schema base
+} API_SET_NAMESPACE_ENTRY_V2, *PAPI_SET_NAMESPACE_ENTRY_V2;
+
+// private // PEB->ApiSetMap on WIN7, WIN8
+typedef struct _API_SET_NAMESPACE_ARRAY_V2
+{
+    ULONG Version; // API_SET_SCHEMA_VERSION_V2
+    ULONG Count;
+    _Field_size_full_(Count) API_SET_NAMESPACE_ENTRY_V2 Array[ANYSIZE_ARRAY];
+} API_SET_NAMESPACE_ARRAY_V2, *PAPI_SET_NAMESPACE_ARRAY_V2;
+
+// private
+typedef struct _API_SET_VALUE_ENTRY_V4
+{
+    ULONG Flags;
+    ULONG NameOffset; // to WCHAR[NameLength / sizeof(WCHAR)], from schema base
+    ULONG NameLength;
+    ULONG ValueOffset; // to WCHAR[ValueLength / sizeof(WCHAR)], from schema base
+    ULONG ValueLength;
+} API_SET_VALUE_ENTRY_V4, *PAPI_SET_VALUE_ENTRY_V4;
+
+// private
+typedef struct _API_SET_VALUE_ARRAY_V4
+{
     ULONG Flags;
     ULONG Count;
-    ULONG EntryOffset;
-    ULONG HashOffset;
-    ULONG HashFactor;
-} API_SET_NAMESPACE, *PAPI_SET_NAMESPACE;
+    _Field_size_full_(Count) API_SET_VALUE_ENTRY_V4 Array[ANYSIZE_ARRAY];
+} API_SET_VALUE_ARRAY_V4, *PAPI_SET_VALUE_ARRAY_V4;
+
+// private
+typedef struct _API_SET_NAMESPACE_ENTRY_V4
+{
+    ULONG Flags; // API_SET_SCHEMA_ENTRY_FLAGS_*
+    ULONG NameOffset; // to WCHAR[NameLength / sizeof(WCHAR)], from schema base
+    ULONG NameLength;
+    ULONG AliasOffset; // to WCHAR[AliasLength / sizeof(WCHAR)], from schema base
+    ULONG AliasLength;
+    ULONG DataOffset; // to API_SET_VALUE_ARRAY_V4, from schema base
+} API_SET_NAMESPACE_ENTRY_V4, *PAPI_SET_NAMESPACE_ENTRY_V4;
+
+// private // PEB->ApiSetMap on WINBLUE
+typedef struct _API_SET_NAMESPACE_ARRAY_V4
+{
+    ULONG Version; // API_SET_SCHEMA_VERSION_V4
+    ULONG Size;
+    ULONG Flags; // API_SET_SCHEMA_FLAGS_*
+    ULONG Count;
+    _Field_size_full_(Count) API_SET_NAMESPACE_ENTRY_V4 Array[ANYSIZE_ARRAY];
+} API_SET_NAMESPACE_ARRAY_V4, *PAPI_SET_NAMESPACE_ARRAY_V4;
+
+// private
+typedef struct _API_SET_VALUE_ENTRY
+{
+    ULONG Flags;
+    ULONG NameOffset; // to WCHAR[NameLength / sizeof(WCHAR)], from schema base
+    ULONG NameLength;
+    ULONG ValueOffset; // to WCHAR[ValueLength / sizeof(WCHAR)], from schema base
+    ULONG ValueLength;
+} API_SET_VALUE_ENTRY, *PAPI_SET_VALUE_ENTRY;
+
+// private
+typedef struct _API_SET_NAMESPACE_ENTRY
+{
+    ULONG Flags; // API_SET_SCHEMA_ENTRY_FLAGS_*
+    ULONG NameOffset; // to WCHAR[NameLength / sizeof(WCHAR)], from schema base
+    ULONG NameLength;
+    ULONG HashedLength;
+    ULONG ValueOffset; // to API_SET_VALUE_ENTRY[ValueCount], from schema base
+    ULONG ValueCount;
+} API_SET_NAMESPACE_ENTRY, *PAPI_SET_NAMESPACE_ENTRY;
 
 // private
 typedef struct _API_SET_HASH_ENTRY
@@ -60,26 +184,17 @@ typedef struct _API_SET_HASH_ENTRY
     ULONG Index;
 } API_SET_HASH_ENTRY, *PAPI_SET_HASH_ENTRY;
 
-// private
-typedef struct _API_SET_NAMESPACE_ENTRY
+// private // PEB->ApiSetMap since THRESHOLD
+typedef struct _API_SET_NAMESPACE
 {
-    ULONG Flags;
-    ULONG NameOffset;
-    ULONG NameLength;
-    ULONG HashedLength;
-    ULONG ValueOffset;
-    ULONG ValueCount;
-} API_SET_NAMESPACE_ENTRY, *PAPI_SET_NAMESPACE_ENTRY;
-
-// private
-typedef struct _API_SET_VALUE_ENTRY
-{
-    ULONG Flags;
-    ULONG NameOffset;
-    ULONG NameLength;
-    ULONG ValueOffset;
-    ULONG ValueLength;
-} API_SET_VALUE_ENTRY, *PAPI_SET_VALUE_ENTRY;
+    ULONG Version; // API_SET_SCHEMA_VERSION_V6
+    ULONG Size;
+    ULONG Flags; // API_SET_SCHEMA_FLAGS_*
+    ULONG Count;
+    ULONG EntryOffset; // to API_SET_NAMESPACE_ENTRY[Count], from this struct base
+    ULONG HashOffset; // to API_SET_HASH_ENTRY[Count], from this struct base
+    ULONG HashFactor;
+} API_SET_NAMESPACE, *PAPI_SET_NAMESPACE;
 
 // PEB->TelemetryCoverageHeader
 typedef struct _TELEMETRY_COVERAGE_HEADER
@@ -208,12 +323,17 @@ typedef ULONG GDI_HANDLE_BUFFER[GDI_HANDLE_BUFFER_SIZE];
 typedef ULONG GDI_HANDLE_BUFFER32[GDI_HANDLE_BUFFER_SIZE32];
 typedef ULONG GDI_HANDLE_BUFFER64[GDI_HANDLE_BUFFER_SIZE64];
 
-typedef VOID (NTAPI* PPS_POST_PROCESS_INIT_ROUTINE)(
+typedef _Function_class_(PS_POST_PROCESS_INIT_ROUTINE)
+VOID NTAPI PS_POST_PROCESS_INIT_ROUTINE(
     VOID
     );
+typedef PS_POST_PROCESS_INIT_ROUTINE* PPS_POST_PROCESS_INIT_ROUTINE;
 
+#ifndef RTL_FLS_MAXIMUM_AVAILABLE
+#define RTL_FLS_MAXIMUM_AVAILABLE 128
+#endif
 #ifndef FLS_MAXIMUM_AVAILABLE
-#define FLS_MAXIMUM_AVAILABLE 128
+#define FLS_MAXIMUM_AVAILABLE 4080
 #endif
 #ifndef TLS_MINIMUM_AVAILABLE
 #define TLS_MINIMUM_AVAILABLE 64
@@ -225,7 +345,7 @@ typedef VOID (NTAPI* PPS_POST_PROCESS_INIT_ROUTINE)(
 /**
  * Process Environment Block (PEB) structure.
  *
- * \remarks https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb
  */
 typedef struct _PEB
 {
@@ -254,7 +374,7 @@ typedef struct _PEB
             BOOLEAN IsImageDynamicallyRelocated : 1;    // The process image base address was relocated.
             BOOLEAN SkipPatchingUser32Forwarders : 1;   // The process skipped forwarders for User32.dll functions. 1 for 64-bit, 0 for 32-bit.
             BOOLEAN IsPackagedProcess : 1;              // The process is a packaged store process (APPX/MSIX).
-            BOOLEAN IsAppContainer : 1;                 // The process has an AppContainer token.
+            BOOLEAN IsAppContainerProcess : 1;          // The process has an AppContainer token.
             BOOLEAN IsProtectedProcessLight : 1;        // The process is a protected process (light).
             BOOLEAN IsLongPathAwareProcess : 1;         // The process is long path aware.
         };
@@ -301,9 +421,9 @@ typedef struct _PEB
     PSLIST_HEADER AtlThunkSListPtr;
 
     //
-    // Pointer to the Image File Execution Options key.
+    // Handle to the Image File Execution Options key.
     //
-    PVOID IFEOKey;
+    HANDLE IFEOKey;
 
     //
     // Cross process flags.
@@ -330,7 +450,7 @@ typedef struct _PEB
     //
     union
     {
-        PVOID KernelCallbackTable;
+        PKERNEL_CALLBACK_TABLE KernelCallbackTable;
         PVOID UserSharedInfoPtr;
     };
 
@@ -380,19 +500,19 @@ typedef struct _PEB
     PVOID* ReadOnlyStaticServerData;
 
     //
-    // Pointer to the ANSI code page data. (PCPTABLEINFO)
+    // Pointer to the ANSI code page data.
     //
-    PVOID AnsiCodePageData;
+    PCPTABLEINFO AnsiCodePageData;
 
     //
-    // Pointer to the OEM code page data. (PCPTABLEINFO)
+    // Pointer to the OEM code page data.
     //
-    PVOID OemCodePageData;
+    PCPTABLEINFO OemCodePageData;
 
     //
-    // Pointer to the Unicode case table data. (PNLSTABLEINFO)
+    // Pointer to the Unicode case table data.
     //
-    PVOID UnicodeCaseTableData;
+    PNLSTABLEINFO UnicodeCaseTableData;
 
     //
     // The total number of system processors.
@@ -488,7 +608,7 @@ typedef struct _PEB
     //
     // Pointer to the system GDI shared handle table.
     //
-    PVOID GdiSharedHandleTable;
+    PGDI_HANDLE_ENTRY GdiSharedHandleTable;
 
     //
     // Pointer to the process starter helper.
@@ -591,9 +711,9 @@ typedef struct _PEB
     PVOID pShimData;
 
     //
-    // Pointer to the Application Compatibility Engine. // APPCOMPAT_EXE_DATA
+    // Pointer to the Application Compatibility Engine.
     //
-    PVOID AppCompatInfo;
+    PAPPCOMPAT_EXE_DATA AppCompatInfo;
 
     //
     // CSD version string of the operating system.
@@ -643,15 +763,7 @@ typedef struct _PEB
     //
     // Packaged process feature state.
     //
-    union
-    {
-        ULONG AppModelFeatureState;
-        struct
-        {
-            ULONG ForegroundBoostProcesses : 1;
-            ULONG AppModelFeatureStateReserved : 31;
-        };
-    };
+    ULONG AppModelFeatureState;
 
     //
     // SpareUlongs
@@ -700,7 +812,7 @@ typedef struct _PEB
     //
     // Reserved.
     //
-    PVOID pImageHeaderHash;
+    PVOID ImageHeaderHash;
 
     //
     // ETW tracing flags.
@@ -789,19 +901,13 @@ typedef struct _PEB
     // Extended feature disable mask (AVX). // since WIN11
     //
     ULONGLONG ExtendedFeatureDisableMask;
-} PEB, * PPEB;
+} PEB, *PPEB;
 
 #ifdef _WIN64
 static_assert(FIELD_OFFSET(PEB, SessionId) == 0x2C0, "FIELD_OFFSET(PEB, SessionId) is incorrect");
-//static_assert(sizeof(PEB) == 0x7B0, "Size of PEB is incorrect"); // REDSTONE3
-//static_assert(sizeof(PEB) == 0x7B8, "Size of PEB is incorrect"); // REDSTONE4
-//static_assert(sizeof(PEB) == 0x7C8, "Size of PEB is incorrect"); // REDSTONE5 // 19H1
 static_assert(sizeof(PEB) == 0x7d0, "Size of PEB is incorrect"); // WIN11
 #else
 static_assert(FIELD_OFFSET(PEB, SessionId) == 0x1D4, "FIELD_OFFSET(PEB, SessionId) is incorrect");
-//static_assert(sizeof(PEB) == 0x468, "Size of PEB is incorrect"); // REDSTONE3
-//static_assert(sizeof(PEB) == 0x470, "Size of PEB is incorrect"); // REDSTONE4
-//static_assert(sizeof(PEB) == 0x480, "Size of PEB is incorrect"); // REDSTONE5 // 19H1
 static_assert(sizeof(PEB) == 0x488, "Size of PEB is incorrect"); // WIN11
 #endif
 
@@ -861,10 +967,17 @@ typedef struct _TEB_ACTIVE_FRAME_EX
 #define STATIC_UNICODE_BUFFER_LENGTH 261
 #define WIN32_CLIENT_INFO_LENGTH 62
 
+// rev - xor key for ReservedForNtRpc
+#ifdef _WIN64
+#define RPC_THREAD_POINTER_KEY 0xABABABABDEDEDEDEui64
+#else
+#define RPC_THREAD_POINTER_KEY 0xABABABAB
+#endif
+
 /**
  * Thread Environment Block (TEB) structure.
  *
- * \remarks https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-teb
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-teb
  */
 typedef struct _TEB
 {
@@ -914,17 +1027,17 @@ typedef struct _TEB
     PVOID CsrClientThread;
 
     //
-    // Reserved.
+    // Reserved for win32k.sys
     //
     PVOID Win32ThreadInfo;
-
+ 
     //
-    // Reserved.
+    // Reserved for user32.dll
     //
     ULONG User32Reserved[26];
 
     //
-    // Reserved.
+    // Reserved for winsrv.dll
     //
     ULONG UserReserved[5];
 
@@ -950,7 +1063,7 @@ typedef struct _TEB
 
 #ifdef _WIN64
     //
-    // Reserved.
+    // Reserved for floating-point emulation.
     //
     PVOID SystemReserved1[25];
 
@@ -981,7 +1094,7 @@ typedef struct _TEB
     BOOLEAN PlaceholderHydrationAlwaysExplicit;
 
     //
-    // Reserved.
+    // ProjFs and Cloud Files (reparse point) file virtualization.
     //
     CHAR PlaceholderReserved[10];
 
@@ -1057,7 +1170,7 @@ typedef struct _TEB
 #endif
 
     //
-    // Reserved for GDI.
+    // Reserved for GDI (Win32k).
     //
     GDI_TEB_BATCH GdiTebBatch;
     CLIENT_ID RealClientId;
@@ -1067,7 +1180,7 @@ typedef struct _TEB
     PVOID GdiThreadLocalInfo;
 
     //
-    // Reserved for User32.
+    // Reserved for User32 (Win32k).
     //
     ULONG_PTR Win32ClientInfo[WIN32_CLIENT_INFO_LENGTH];
 
@@ -1109,7 +1222,7 @@ typedef struct _TEB
     PVOID TlsSlots[TLS_MINIMUM_AVAILABLE];
 
     //
-    // Reserved.
+    // Reserved for TLS.
     //
     LIST_ENTRY TlsLinks;
 
@@ -1119,12 +1232,12 @@ typedef struct _TEB
     PVOID Vdm;
 
     //
-    // Reserved.
+    // Reserved for RPC. The pointer is XOR'ed with RPC_THREAD_POINTER_KEY.
     //
     PVOID ReservedForNtRpc;
 
     //
-    // Reserved.
+    // Reserved for Debugging (DebugActiveProcess).
     //
     PVOID DbgSsReserved[2];
 
@@ -1148,7 +1261,7 @@ typedef struct _TEB
     GUID ActivityId;
 
     //
-    // The service creating the thread (svchost).
+    // The identifier of the service that created the thread. (svchost)
     //
     PVOID SubProcessTag;
 
@@ -1173,7 +1286,7 @@ typedef struct _TEB
     ULONG GdiBatchCount;
 
     //
-    // The preferred processor for the curremt thread. (SetThreadIdealProcessor/SetThreadIdealProcessorEx)
+    // The preferred processor for the current thread. (SetThreadIdealProcessor/SetThreadIdealProcessorEx)
     //
     union
     {
@@ -1199,25 +1312,73 @@ typedef struct _TEB
     PVOID ReservedForPerf;
 
     //
-    // tagSOleTlsData.
+    // Reserved for Object Linking and Embedding (OLE)
     //
-    PVOID ReservedForOle;
+    PSOleTlsData ReservedForOle;
 
+    //
+    // Indicates whether the thread is waiting on the loader lock.
+    //
     ULONG WaitingOnLoaderLock;
+
+    //
+    // The saved priority state for the thread.
+    //
     PVOID SavedPriorityState;
+
+    //
+    // Reserved.
+    //
     ULONG_PTR ReservedForCodeCoverage;
+
+    //
+    // Reserved.
+    //
     PVOID ThreadPoolData;
+
+    //
+    // Pointer to the TLS (Thread Local Storage) expansion slots for the thread.
+    //
     PVOID *TlsExpansionSlots;
+
 #ifdef _WIN64
     PVOID ChpeV2CpuAreaInfo; // CHPEV2_CPUAREA_INFO // previously DeallocationBStore
     PVOID Unused; // previously BStoreLimit
 #endif
+
+    //
+    // The generation of the MUI (Multilingual User Interface) data.
+    //
     ULONG MuiGeneration;
+
+    //
+    // Indicates whether the thread is impersonating another security context.
+    //
     ULONG IsImpersonating;
+
+    //
+    // Pointer to the NLS (National Language Support) cache.
+    //
     PVOID NlsCache;
+
+    //
+    // Pointer to the AppCompat/Shim Engine data.
+    //
     PVOID pShimData;
+
+    //
+    // Reserved.
+    //
     ULONG HeapData;
+
+    //
+    // Handle to the current transaction associated with the thread.
+    //
     HANDLE CurrentTransactionHandle;
+
+    //
+    // Pointer to the active frame for the thread.
+    //
     PTEB_ACTIVE_FRAME ActiveFrame;
 
     //
@@ -1225,63 +1386,148 @@ typedef struct _TEB
     //
     PVOID FlsData;
 
+    //
+    // Pointer to the preferred languages for the current thread. (GetThreadPreferredUILanguages)
+    //
     PVOID PreferredLanguages;
+
+    //
+    // Pointer to the user-preferred languages for the current thread. (GetUserPreferredUILanguages)
+    //
     PVOID UserPrefLanguages;
+
+    //
+    // Pointer to the merged preferred languages for the current thread. (MUI_MERGE_USER_FALLBACK)
+    //
     PVOID MergedPrefLanguages;
+
+    //
+    // Indicates whether the thread is impersonating another user's language settings.
+    //
     ULONG MuiImpersonation;
 
+    //
+    // Reserved.
+    //
     union
     {
         USHORT CrossTebFlags;
         USHORT SpareCrossTebBits : 16;
     };
+
+    //
+    // SameTebFlags modify the state and behavior of the current thread.
+    //
     union
     {
         USHORT SameTebFlags;
         struct
         {
             USHORT SafeThunkCall : 1;
-            USHORT InDebugPrint : 1;
-            USHORT HasFiberData : 1;
-            USHORT SkipThreadAttach : 1;
+            USHORT InDebugPrint : 1;            // Indicates if the thread is currently in a debug print routine.
+            USHORT HasFiberData : 1;            // Indicates if the thread has local fiber-local storage (FLS).
+            USHORT SkipThreadAttach : 1;        // Indicates if the thread should suppress DLL_THREAD_ATTACH notifications.
             USHORT WerInShipAssertCode : 1;
-            USHORT RanProcessInit : 1;
-            USHORT ClonedThread : 1;
-            USHORT SuppressDebugMsg : 1;
+            USHORT RanProcessInit : 1;          // Indicates if the thread has run process initialization code.
+            USHORT ClonedThread : 1;            // Indicates if the thread is a clone of a different thread.
+            USHORT SuppressDebugMsg : 1;        // Indicates if the thread should suppress LOAD_DLL_DEBUG_INFO notifications.
             USHORT DisableUserStackWalk : 1;
             USHORT RtlExceptionAttached : 1;
-            USHORT InitialThread : 1;
+            USHORT InitialThread : 1;           // Indicates if the thread is the initial thread of the process.
             USHORT SessionAware : 1;
-            USHORT LoadOwner : 1;
+            USHORT LoadOwner : 1;               // Indicates if the thread is the owner of the process loader lock.
             USHORT LoaderWorker : 1;
             USHORT SkipLoaderInit : 1;
             USHORT SkipFileAPIBrokering : 1;
         };
     };
 
+    //
+    // Pointer to the callback function that is called when a KTM transaction scope is entered.
+    //
     PVOID TxnScopeEnterCallback;
+
+    //
+    // Pointer to the callback function that is called when a KTM transaction scope is exited.
+    ///
     PVOID TxnScopeExitCallback;
+
+    //
+    // Pointer to optional context data for use by the application when a KTM transaction scope callback is called.
+    //
     PVOID TxnScopeContext;
+
+    //
+    // The lock count of critical sections for the current thread.
+    //
     ULONG LockCount;
+
+    //
+    // The offset to the WOW64 (Windows on Windows) TEB for the current thread.
+    //
     LONG WowTebOffset;
-    PVOID ResourceRetValue;
+
+    //
+    // Pointer to the DLL containing the resource (valid after LdrFindResource_U/LdrResFindResource/etc... returns).
+    //
+    PLDR_RESLOADER_RET ResourceRetValue;
+
+    //
+    // Reserved for Windows Driver Framework (WDF).
+    //
     PVOID ReservedForWdf;
+
+    //
+    // Reserved for the Microsoft C runtime (CRT).
+    //
     ULONGLONG ReservedForCrt;
+
+    //
+    // The Host Compute Service (HCS) container identifier.
+    //
     GUID EffectiveContainerId;
-    ULONGLONG LastSleepCounter; // Win11
+
+    //
+    // Reserved for Kernel32!Sleep (SpinWait).
+    //
+    ULONGLONG LastSleepCounter; // since Win11
+
+    //
+    // Reserved for Kernel32!Sleep (SpinWait).
+    //
     ULONG SpinCallCount;
+
+    //
+    // Extended feature disable mask (AVX).
+    //
     ULONGLONG ExtendedFeatureDisableMask;
-    PVOID SchedulerSharedDataSlot; // 24H2
+
+    //
+    // Reserved.
+    //
+    PVOID SchedulerSharedDataSlot; // since 24H2
+
+    //
+    // Reserved.
+    //
     PVOID HeapWalkContext;
+
+    //
+    // The primary processor group affinity of the thread.
+    //
     GROUP_AFFINITY PrimaryGroupAffinity;
+
+    //
+    // Read-copy-update (RCU) synchronization context.
+    //
     ULONG Rcu[2];
 } TEB, *PTEB;
 
 #ifdef _WIN64
-//static_assert(sizeof(TEB) == 0x1850, "Size of TEB is incorrect"); // WIN11
+static_assert(FIELD_OFFSET(TEB, SchedulerSharedDataSlot) == 0x1850, "Size of TEB is incorrect"); // WIN11
 static_assert(sizeof(TEB) == 0x1878, "Size of TEB is incorrect"); // 24H2
 #else
-//static_assert(sizeof(TEB) == 0x1018, "Size of TEB is incorrect"); // WIN11
+static_assert(FIELD_OFFSET(TEB, SchedulerSharedDataSlot) == 0x1018, "Size of TEB is incorrect"); // WIN11
 static_assert(sizeof(TEB) == 0x1038, "Size of TEB is incorrect"); // 24H2
 #endif
 

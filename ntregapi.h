@@ -7,16 +7,17 @@
 #ifndef _NTREGAPI_H
 #define _NTREGAPI_H
 
-// Boot condition flags (NtInitializeRegistry)
-
-#define REG_INIT_BOOT_SM 0x0000
-#define REG_INIT_BOOT_SETUP 0x0001
-#define REG_INIT_BOOT_ACCEPTED_BASE 0x0002
-#define REG_INIT_BOOT_ACCEPTED_MAX REG_INIT_BOOT_ACCEPTED_BASE + 999
+//
+// Registry
+//
 
 #define REG_MAX_KEY_VALUE_NAME_LENGTH 32767
 #define REG_MAX_KEY_NAME_LENGTH 512
 
+/**
+ * The KEY_INFORMATION_CLASS structure represents the type of information to supply about a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_key_information_class
+ */
 typedef enum _KEY_INFORMATION_CLASS
 {
     KeyBasicInformation, // KEY_BASIC_INFORMATION
@@ -32,26 +33,38 @@ typedef enum _KEY_INFORMATION_CLASS
     MaxKeyInfoClass
 } KEY_INFORMATION_CLASS;
 
+/**
+ * The KEY_BASIC_INFORMATION structure defines a subset of the full information that is available for a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_basic_information
+ */
 typedef struct _KEY_BASIC_INFORMATION
 {
-    LARGE_INTEGER LastWriteTime;
-    ULONG TitleIndex;
-    ULONG NameLength;
-    _Field_size_bytes_(NameLength) WCHAR Name[1];
+    LARGE_INTEGER LastWriteTime;                    // Number of 100-nanosecond intervals since this key or any of its values changed.
+    ULONG TitleIndex;                               // Reserved // A legacy field originally intended for use with localization such as an index of a resource table.
+    ULONG NameLength;                               // The size, in bytes, of the key name string in the Name array.
+    _Field_size_bytes_(NameLength) WCHAR Name[1];   // The name of the registry key. This string is not null-terminated.
 } KEY_BASIC_INFORMATION, *PKEY_BASIC_INFORMATION;
 
+/**
+ * The KEY_NODE_INFORMATION structure defines the basic information available for a registry (sub)key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_node_information
+ */
 typedef struct _KEY_NODE_INFORMATION
 {
-    LARGE_INTEGER LastWriteTime;
-    ULONG TitleIndex;
-    ULONG ClassOffset;
-    ULONG ClassLength;
-    ULONG NameLength;
-    _Field_size_bytes_(NameLength) WCHAR Name[1];
+    LARGE_INTEGER LastWriteTime;                    // Number of 100-nanosecond intervals since this key or any of its values changed.
+    ULONG TitleIndex;                               // Reserved // A legacy field originally intended for use with localization such as an index of a resource table.
+    ULONG ClassOffset;                              // The byte offset from the start of this structure to the class name string. This string is not null-terminated.
+    ULONG ClassLength;                              // The size, in bytes, in the class name string.
+    ULONG NameLength;                               // The size, in bytes, of the key name string contained in the Name array.
+    _Field_size_bytes_(NameLength) WCHAR Name[1];   // The name of the registry key. This string is not null-terminated.
     // ...
     // WCHAR Class[1];
 } KEY_NODE_INFORMATION, *PKEY_NODE_INFORMATION;
 
+/**
+ * The KEY_FULL_INFORMATION structure defines information available for a registry key, including subkeys, names and value entries.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_full_information
+ */
 typedef struct _KEY_FULL_INFORMATION
 {
     LARGE_INTEGER LastWriteTime;
@@ -67,12 +80,20 @@ typedef struct _KEY_FULL_INFORMATION
     WCHAR Class[1];
 } KEY_FULL_INFORMATION, *PKEY_FULL_INFORMATION;
 
+/**
+ * The KEY_NAME_INFORMATION structure holds the name and name length of the key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_key_name_information
+ */
 typedef struct _KEY_NAME_INFORMATION
 {
-    ULONG NameLength;
-    _Field_size_bytes_(NameLength) WCHAR Name[1];
+    ULONG NameLength;                               // The size, in bytes, of the key name string in the Name array.
+    _Field_size_bytes_(NameLength) WCHAR Name[1];   // The name of the registry key. This string is not null-terminated.
 } KEY_NAME_INFORMATION, *PKEY_NAME_INFORMATION;
 
+/**
+ * The KEY_CACHED_INFORMATION structure holds the cached information available for a registry key or subkey.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_key_cached_information
+ */
 typedef struct _KEY_CACHED_INFORMATION
 {
     LARGE_INTEGER LastWriteTime;
@@ -86,16 +107,69 @@ typedef struct _KEY_CACHED_INFORMATION
     _Field_size_bytes_(NameLength) WCHAR Name[1];
 } KEY_CACHED_INFORMATION, *PKEY_CACHED_INFORMATION;
 
+//
+// REG_FLAG_*
+//
+
 // rev
+/**
+ * \def REG_FLAG_VOLATILE
+ * \brief The registry key is volatile.
+ *
+ * When this flag is set, the key is not preserved when the system is rebooted.
+ * Volatile keys exist only in memory and are lost when the system shuts down.
+ */
 #define REG_FLAG_VOLATILE 0x0001
+// rev
+/**
+ * \def REG_FLAG_LINK
+ * \brief The registry key is a symbolic link.
+ *
+ * When this flag is set, the key acts as a symbolic link to another registry key.
+ * This allows redirection of registry operations to a different key location.
+ */
 #define REG_FLAG_LINK 0x0002
 
+//
+// REG_KEY_*
+//
+
+// rev
+#define REG_KEY_RESERVED_FLAG 0x0001
 // msdn
+/**
+ * \def REG_KEY_DONT_VIRTUALIZE
+ * \brief The REG_KEY_DONT_VIRTUALIZE flag disables write registry virtualization.
+ *
+ * If this flag is set and a create key or set value operation fails because the caller
+ * does not have sufficient access right to the parent key, the registry fails the operation.
+ * If this flag is clear, the registry attempts to write the key or value in the virtual store.
+ * The caller must have the KEY_READ right on the parent key.
+ */
 #define REG_KEY_DONT_VIRTUALIZE 0x0002
+/**
+ * \def REG_KEY_DONT_SILENT_FAIL
+ * \brief The REG_KEY_DONT_SILENT_FAIL flag disables open registry virtualization.
+ *
+ * If this flag is set and an open operation fails on a key that has virtualization enabled,
+ * the registry does not attempt to reopen the key. If this flag is clear, the registry attempts
+ * to reopen the key with MAXIMUM_ALLOWED access instead of the requested access.
+ */
 #define REG_KEY_DONT_SILENT_FAIL 0x0004
+/**
+ * \def REG_KEY_RECURSE_FLAG
+ * \brief If REG_KEY_RECURSE_FLAG is set, registry virtualization flags are propagated from the parent key.
+ *
+ * If this flag is clear, registry virtualization flags are not propagated.
+ * Changing this flag affects only new descendent keys created after the flag is changed.
+ * It does not set or clear these flags for existing descendent keys.
+ */
 #define REG_KEY_RECURSE_FLAG 0x0008
 
 // private
+/**
+ * The KEY_FLAGS_INFORMATION structure contains various flags about a registry key or subkey.
+ */
 typedef struct _KEY_FLAGS_INFORMATION
 {
     ULONG Wow64Flags;
@@ -167,6 +241,10 @@ typedef struct _KEY_LAYER_INFORMATION
     ULONG Reserved : 28;
 } KEY_LAYER_INFORMATION, *PKEY_LAYER_INFORMATION;
 
+/**
+ * The KEY_SET_INFORMATION_CLASS enumeration type represents the type of information to set for a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_key_set_information_class
+ */
 typedef enum _KEY_SET_INFORMATION_CLASS
 {
     KeyWriteTimeInformation, // KEY_WRITE_TIME_INFORMATION
@@ -180,14 +258,12 @@ typedef enum _KEY_SET_INFORMATION_CLASS
 } KEY_SET_INFORMATION_CLASS;
 
 /**
- * Structure representing the last write time of a registry key.
- *
- * The values include:
- * - LastWriteTime: Contains the timestamp of the last write operation performed on a registry key.
+ * The KEY_WRITE_TIME_INFORMATION structure is used by the system to set the last write time for a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_write_time_information
  */
 typedef struct _KEY_WRITE_TIME_INFORMATION
 {
-    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER LastWriteTime; // Number of 100-nanosecond intervals since this key or any of its values changed.
 } KEY_WRITE_TIME_INFORMATION, *PKEY_WRITE_TIME_INFORMATION;
 
 /**
@@ -261,17 +337,25 @@ typedef struct _KEY_SET_VIRTUALIZATION_INFORMATION
     ULONG Reserved : 29;
 } KEY_SET_VIRTUALIZATION_INFORMATION, *PKEY_SET_VIRTUALIZATION_INFORMATION;
 
+/**
+ * The KEY_VALUE_INFORMATION_CLASS enumeration type specifies the type of information to supply about the value of a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_key_value_information_class
+ */
 typedef enum _KEY_VALUE_INFORMATION_CLASS
 {
     KeyValueBasicInformation, // KEY_VALUE_BASIC_INFORMATION
     KeyValueFullInformation, // KEY_VALUE_FULL_INFORMATION
     KeyValuePartialInformation, // KEY_VALUE_PARTIAL_INFORMATION
-    KeyValueFullInformationAlign64,
+    KeyValueFullInformationAlign64, // KEY_VALUE_FULL_INFORMATION_ALIGN64
     KeyValuePartialInformationAlign64,  // KEY_VALUE_PARTIAL_INFORMATION_ALIGN64
     KeyValueLayerInformation, // KEY_VALUE_LAYER_INFORMATION
     MaxKeyValueInfoClass
 } KEY_VALUE_INFORMATION_CLASS;
 
+/**
+ * The KEY_VALUE_BASIC_INFORMATION structure defines a subset of the full information available for a value entry of a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_basic_information
+ */
 typedef struct _KEY_VALUE_BASIC_INFORMATION
 {
     ULONG TitleIndex;
@@ -280,6 +364,10 @@ typedef struct _KEY_VALUE_BASIC_INFORMATION
     _Field_size_bytes_(NameLength) WCHAR Name[1];
 } KEY_VALUE_BASIC_INFORMATION, *PKEY_VALUE_BASIC_INFORMATION;
 
+/**
+ * The KEY_VALUE_FULL_INFORMATION structure defines information available for a value entry of a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_full_information
+ */
 typedef struct _KEY_VALUE_FULL_INFORMATION
 {
     ULONG TitleIndex;
@@ -292,6 +380,25 @@ typedef struct _KEY_VALUE_FULL_INFORMATION
     // UCHAR Data[1];
 } KEY_VALUE_FULL_INFORMATION, *PKEY_VALUE_FULL_INFORMATION;
 
+/**
+ * The KEY_VALUE_FULL_INFORMATION_ALIGN64 structure defines information available for a value entry of a registry key.
+ */
+typedef DECLSPEC_ALIGN(8) struct _KEY_VALUE_FULL_INFORMATION_ALIGN64
+{
+    ULONG TitleIndex;
+    ULONG Type;
+    ULONG DataOffset;
+    ULONG DataLength;
+    ULONG NameLength;
+    _Field_size_bytes_(NameLength) WCHAR Name[1];
+    // ...
+    // UCHAR Data[1];
+} KEY_VALUE_FULL_INFORMATION_ALIGN64, *PKEY_VALUE_FULL_INFORMATION_ALIGN64;
+
+/**
+ * The KEY_VALUE_PARTIAL_INFORMATION structure defines a subset of the value information available for a value entry of a registry key.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_partial_information
+ */
 typedef struct _KEY_VALUE_PARTIAL_INFORMATION
 {
     ULONG TitleIndex;
@@ -300,7 +407,10 @@ typedef struct _KEY_VALUE_PARTIAL_INFORMATION
     _Field_size_bytes_(DataLength) UCHAR Data[1];
 } KEY_VALUE_PARTIAL_INFORMATION, *PKEY_VALUE_PARTIAL_INFORMATION;
 
-typedef struct _KEY_VALUE_PARTIAL_INFORMATION_ALIGN64
+/**
+ * The KEY_VALUE_PARTIAL_INFORMATION_ALIGN64 structure defines a subset of the value information available for a value entry of a registry key.
+ */
+typedef DECLSPEC_ALIGN(8) struct _KEY_VALUE_PARTIAL_INFORMATION_ALIGN64
 {
     ULONG Type;
     ULONG DataLength;
@@ -308,6 +418,9 @@ typedef struct _KEY_VALUE_PARTIAL_INFORMATION_ALIGN64
 } KEY_VALUE_PARTIAL_INFORMATION_ALIGN64, *PKEY_VALUE_PARTIAL_INFORMATION_ALIGN64;
 
 // private
+/**
+ * The KEY_VALUE_LAYER_INFORMATION structure defines the flags for a value entry of a registry key.
+ */
 typedef struct _KEY_VALUE_LAYER_INFORMATION
 {
     ULONG IsTombstone : 1;
@@ -361,6 +474,7 @@ typedef enum _REG_ACTION
     KeyModified
 } REG_ACTION;
 
+_Struct_size_bytes_(NextEntryOffset)
 typedef struct _REG_NOTIFY_INFORMATION
 {
     ULONG NextEntryOffset;
@@ -368,18 +482,6 @@ typedef struct _REG_NOTIFY_INFORMATION
     ULONG KeyLength;
     _Field_size_bytes_(KeyLength) WCHAR Key[1];
 } REG_NOTIFY_INFORMATION, *PREG_NOTIFY_INFORMATION;
-
-typedef struct _KEY_PID_ARRAY
-{
-    HANDLE ProcessId;
-    UNICODE_STRING KeyName;
-} KEY_PID_ARRAY, *PKEY_PID_ARRAY;
-
-typedef struct _KEY_OPEN_SUBKEYS_INFORMATION
-{
-    ULONG Count;
-    KEY_PID_ARRAY KeyArray[1];
-} KEY_OPEN_SUBKEYS_INFORMATION, *PKEY_OPEN_SUBKEYS_INFORMATION;
 
 //
 // Virtualization // since REDSTONE
@@ -587,14 +689,14 @@ typedef struct _VR_UNLOAD_DIFFERENCING_HIVE_FOR_HOST
 /**
  * Creates a new registry key routine or opens an existing one.
  *
- * @param[out] KeyHandle A pointer to a handle that receives the key handle.
- * @param[in] DesiredAccess The access mask that specifies the desired access rights.
- * @param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
- * @param[in] TitleIndex Reserved.
- * @param[in, optional] Class A pointer to a UNICODE_STRING structure that specifies the class of the key.
- * @param[in] CreateOptions The options to use when creating the key.
- * @param[out, optional] Disposition A pointer to a variable that receives the disposition value.
- * @return NTSTATUS Successful or errant status.
+ * \param[out] KeyHandle A pointer to a handle that receives the key handle.
+ * \param[in] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
+ * \param[in] TitleIndex Reserved.
+ * \param[in, optional] Class A pointer to a UNICODE_STRING structure that specifies the class of the key.
+ * \param[in] CreateOptions The options to use when creating the key.
+ * \param[out, optional] Disposition A pointer to a variable that receives the disposition value.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -604,24 +706,23 @@ NtCreateKey(
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
     _Reserved_ ULONG TitleIndex,
-    _In_opt_ PUNICODE_STRING Class,
+    _In_opt_ PCUNICODE_STRING Class,
     _In_ ULONG CreateOptions,
     _Out_opt_ PULONG Disposition
     );
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_VISTA)
 /**
  * Creates a new registry key or opens an existing one, and it associates the key with a transaction.
  *
- * @param[out] KeyHandle A pointer to a handle that receives the key handle.
- * @param[in] DesiredAccess The access mask that specifies the desired access rights.
- * @param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
- * @param[in] TitleIndex Reserved.
- * @param[in, optional] Class A pointer to a UNICODE_STRING structure that specifies the class of the key.
- * @param[in] CreateOptions The options to use when creating the key.
- * @param[in] TransactionHandle A handle to the transaction.
- * @param[out, optional] Disposition A pointer to a variable that receives the disposition value.
- * @return NTSTATUS Successful or errant status.
+ * \param[out] KeyHandle A pointer to a handle that receives the key handle.
+ * \param[in] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
+ * \param[in] TitleIndex Reserved.
+ * \param[in, optional] Class A pointer to a UNICODE_STRING structure that specifies the class of the key.
+ * \param[in] CreateOptions The options to use when creating the key.
+ * \param[in] TransactionHandle A handle to the transaction.
+ * \param[out, optional] Disposition A pointer to a variable that receives the disposition value.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -631,21 +732,20 @@ NtCreateKeyTransacted(
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
     _Reserved_ ULONG TitleIndex,
-    _In_opt_ PUNICODE_STRING Class,
+    _In_opt_ PCUNICODE_STRING Class,
     _In_ ULONG CreateOptions,
     _In_ HANDLE TransactionHandle,
     _Out_opt_ PULONG Disposition
     );
-#endif
 
 /**
  * Opens an existing registry key.
  *
- * @param[out] KeyHandle A pointer to a handle that receives the key handle.
- * @param[in] DesiredAccess The access mask that specifies the desired access rights.
- * @param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
- * @return NTSTATUS Successful or errant status.
- * @remarks NtOpenKey ignores the security information in the ObjectAttributes structure.
+ * \param[out] KeyHandle A pointer to a handle that receives the key handle.
+ * \param[in] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks NtOpenKey ignores the security information in the ObjectAttributes structure.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -656,15 +756,14 @@ NtOpenKey(
     _In_ POBJECT_ATTRIBUTES ObjectAttributes
     );
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_VISTA)
 /**
  * Opens an existing registry key and associates the key with a transaction.
  *
- * @param[out] KeyHandle A pointer to a handle that receives the key handle.
- * @param[in] DesiredAccess The access mask that specifies the desired access rights.
- * @param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
- * @param[in] TransactionHandle A handle to the transaction.
- * @return NTSTATUS Successful or errant status.
+ * \param[out] KeyHandle A pointer to a handle that receives the key handle.
+ * \param[in] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
+ * \param[in] TransactionHandle A handle to the transaction.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -675,17 +774,15 @@ NtOpenKeyTransacted(
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
     _In_ HANDLE TransactionHandle
     );
-#endif
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_7)
 /**
  * Opens an existing registry key with extended options.
  *
- * @param[out] KeyHandle A pointer to a handle that receives the key handle.
- * @param[in] DesiredAccess The access mask that specifies the desired access rights.
- * @param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
- * @param[in] OpenOptions The options to use when opening the key.
- * @return NTSTATUS Successful or errant status.
+ * \param[out] KeyHandle A pointer to a handle that receives the key handle.
+ * \param[in] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
+ * \param[in] OpenOptions The options to use when opening the key.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -700,12 +797,12 @@ NtOpenKeyEx(
 /**
  * Opens an existing registry key in a transaction with extended options.
  *
- * @param[out] KeyHandle A pointer to a handle that receives the key handle.
- * @param[in] DesiredAccess The access mask that specifies the desired access rights.
- * @param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
- * @param[in] OpenOptions The options to use when opening the key.
- * @param[in] TransactionHandle A handle to the transaction.
- * @return NTSTATUS Successful or errant status.
+ * \param[out] KeyHandle A pointer to a handle that receives the key handle.
+ * \param[in] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that specifies the object attributes.
+ * \param[in] OpenOptions The options to use when opening the key.
+ * \param[in] TransactionHandle A handle to the transaction.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -717,13 +814,12 @@ NtOpenKeyTransactedEx(
     _In_ ULONG OpenOptions,
     _In_ HANDLE TransactionHandle
     );
-#endif
 
 /**
  * Deletes a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be deleted.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be deleted.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -735,42 +831,42 @@ NtDeleteKey(
 /**
  * Renames a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be renamed.
- * @param[in] NewName A pointer to a UNICODE_STRING structure that specifies the new name of the key.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be renamed.
+ * \param[in] NewName A pointer to a UNICODE_STRING structure that specifies the new name of the key.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
 NTAPI
 NtRenameKey(
     _In_ HANDLE KeyHandle,
-    _In_ PUNICODE_STRING NewName
+    _In_ PCUNICODE_STRING NewName
     );
 
 /**
  * Deletes a value from a registry key.
  *
- * @param[in] KeyHandle A handle to the key that contains the value to be deleted.
- * @param[in] ValueName A pointer to a UNICODE_STRING structure that specifies the name of the value to be deleted.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key that contains the value to be deleted.
+ * \param[in] ValueName A pointer to a UNICODE_STRING structure that specifies the name of the value to be deleted.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
 NTAPI
 NtDeleteValueKey(
     _In_ HANDLE KeyHandle,
-    _In_ PUNICODE_STRING ValueName
+    _In_ PCUNICODE_STRING ValueName
     );
 
 /**
  * Queries information about a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be queried.
- * @param[in] KeyInformationClass The type of information to be queried.
- * @param[out] KeyInformation A pointer to a buffer that receives the key information.
- * @param[in] Length The size of the buffer.
- * @param[out] ResultLength A pointer to a variable that receives the size of the data returned.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be queried.
+ * \param[in] KeyInformationClass The type of information to be queried.
+ * \param[out] KeyInformation A pointer to a buffer that receives the key information.
+ * \param[in] Length The size of the buffer.
+ * \param[out] ResultLength A pointer to a variable that receives the size of the data returned.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -786,11 +882,11 @@ NtQueryKey(
 /**
  * Sets information for a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be modified.
- * @param[in] KeySetInformationClass The type of information to be set.
- * @param[in] KeySetInformation A pointer to a buffer that contains the key information.
- * @param[in] KeySetInformationLength The size of the buffer.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be modified.
+ * \param[in] KeySetInformationClass The type of information to be set.
+ * \param[in] KeySetInformation A pointer to a buffer that contains the key information.
+ * \param[in] KeySetInformationLength The size of the buffer.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -805,20 +901,20 @@ NtSetInformationKey(
 /**
  * Queries the value of a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be queried.
- * @param[in] ValueName A pointer to a UNICODE_STRING structure that specifies the name of the value to be queried.
- * @param[in] KeyValueInformationClass The type of information to be queried.
- * @param[out] KeyValueInformation A pointer to a buffer that receives the value information.
- * @param[in] Length The size of the buffer.
- * @param[out] ResultLength A pointer to a variable that receives the size of the data returned.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be queried.
+ * \param[in] ValueName A pointer to a UNICODE_STRING structure that specifies the name of the value to be queried.
+ * \param[in] KeyValueInformationClass The type of information to be queried.
+ * \param[out] KeyValueInformation A pointer to a buffer that receives the value information.
+ * \param[in] Length The size of the buffer.
+ * \param[out] ResultLength A pointer to a variable that receives the size of the data returned.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
 NTAPI
 NtQueryValueKey(
     _In_ HANDLE KeyHandle,
-    _In_ PUNICODE_STRING ValueName,
+    _In_ PCUNICODE_STRING ValueName,
     _In_ KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,
     _Out_writes_bytes_to_opt_(Length, *ResultLength) PVOID KeyValueInformation,
     _In_ ULONG Length,
@@ -828,20 +924,20 @@ NtQueryValueKey(
 /**
  * Sets the value of a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be modified.
- * @param[in] ValueName A pointer to a UNICODE_STRING structure that specifies the name of the value to be set.
- * @param[in, optional] TitleIndex Reserved.
- * @param[in] Type The type of the value.
- * @param[in] Data A pointer to a buffer that contains the value data.
- * @param[in] DataSize The size of the buffer.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be modified.
+ * \param[in] ValueName A pointer to a UNICODE_STRING structure that specifies the name of the value to be set.
+ * \param[in, optional] TitleIndex Reserved.
+ * \param[in] Type The type of the value.
+ * \param[in] Data A pointer to a buffer that contains the value data.
+ * \param[in] DataSize The size of the buffer.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
 NTAPI
 NtSetValueKey(
     _In_ HANDLE KeyHandle,
-    _In_ PUNICODE_STRING ValueName,
+    _In_ PCUNICODE_STRING ValueName,
     _In_opt_ ULONG TitleIndex,
     _In_ ULONG Type,
     _In_reads_bytes_opt_(DataSize) PVOID Data,
@@ -851,13 +947,13 @@ NtSetValueKey(
 /**
  * Queries multiple values of a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be queried.
- * @param[in, out] ValueEntries A pointer to an array of KEY_VALUE_ENTRY structures that specify the values to be queried.
- * @param[in] EntryCount The number of entries in the array.
- * @param[out] ValueBuffer A pointer to a buffer that receives the value data.
- * @param[in, out] BufferLength A pointer to a variable that specifies the size of the buffer and receives the size of the data returned.
- * @param[out, optional] RequiredBufferLength A pointer to a variable that receives the size of the buffer required to hold the data.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be queried.
+ * \param[in, out] ValueEntries A pointer to an array of KEY_VALUE_ENTRY structures that specify the values to be queried.
+ * \param[in] EntryCount The number of entries in the array.
+ * \param[out] ValueBuffer A pointer to a buffer that receives the value data.
+ * \param[in, out] BufferLength A pointer to a variable that specifies the size of the buffer and receives the size of the data returned.
+ * \param[out, optional] RequiredBufferLength A pointer to a variable that receives the size of the buffer required to hold the data.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -874,13 +970,13 @@ NtQueryMultipleValueKey(
 /**
  * Enumerates the subkeys of a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be enumerated.
- * @param[in] Index The index of the subkey to be enumerated.
- * @param[in] KeyInformationClass The type of information to be queried.
- * @param[out] KeyInformation A pointer to a buffer that receives the key information.
- * @param[in] Length The size of the buffer.
- * @param[out] ResultLength A pointer to a variable that receives the size of the data returned.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be enumerated.
+ * \param[in] Index The index of the subkey to be enumerated.
+ * \param[in] KeyInformationClass The type of information to be queried.
+ * \param[out] KeyInformation A pointer to a buffer that receives the key information.
+ * \param[in] Length The size of the buffer.
+ * \param[out] ResultLength A pointer to a variable that receives the size of the data returned.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -897,13 +993,13 @@ NtEnumerateKey(
 /**
  * Enumerates the values of a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be enumerated.
- * @param[in] Index The index of the value to be enumerated.
- * @param[in] KeyValueInformationClass The type of information to be queried.
- * @param[out] KeyValueInformation A pointer to a buffer that receives the value information.
- * @param[in] Length The size of the buffer.
- * @param[out] ResultLength A pointer to a variable that receives the size of the data returned.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be enumerated.
+ * \param[in] Index The index of the value to be enumerated.
+ * \param[in] KeyValueInformationClass The type of information to be queried.
+ * \param[out] KeyValueInformation A pointer to a buffer that receives the value information.
+ * \param[in] Length The size of the buffer.
+ * \param[out] ResultLength A pointer to a variable that receives the size of the data returned.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -920,8 +1016,8 @@ NtEnumerateValueKey(
 /**
  * Flushes the changes to a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be flushed.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be flushed.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -933,9 +1029,9 @@ NtFlushKey(
 /**
  * Compacts the specified registry keys.
  *
- * @param[in] Count The number of keys to be compacted.
- * @param[in] KeyArray An array of handles to the keys to be compacted.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] Count The number of keys to be compacted.
+ * \param[in] KeyArray An array of handles to the keys to be compacted.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -948,8 +1044,8 @@ NtCompactKeys(
 /**
  * Compresses a registry key.
  *
- * @param[in] KeyHandle A handle to the key to be compressed.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] KeyHandle A handle to the key to be compressed.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -961,9 +1057,9 @@ NtCompressKey(
 /**
  * Loads a registry key from a file.
  *
- * @param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
- * @param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
+ * \param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -976,10 +1072,10 @@ NtLoadKey(
 /**
  * Loads a registry key from a file with additional options.
  *
- * @param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
- * @param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
- * @param[in] Flags The options to use when loading the key.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
+ * \param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
+ * \param[in] Flags The options to use when loading the key.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -990,19 +1086,18 @@ NtLoadKey2(
     _In_ ULONG Flags
     );
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_SERVER_2003)
 /**
  * Loads a registry key from a file with extended options.
  *
- * @param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
- * @param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
- * @param[in] Flags The options to use when loading the key.
- * @param[in, optional] TrustClassKey A handle to the trust class key.
- * @param[in, optional] Event A handle to an event.
- * @param[in, optional] DesiredAccess The access mask that specifies the desired access rights.
- * @param[out, optional] RootHandle A pointer to a handle that receives the root handle.
- * @param[in, reserved] Reserved Reserved.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
+ * \param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
+ * \param[in] Flags The options to use when loading the key.
+ * \param[in, optional] TrustClassKey A handle to the trust class key.
+ * \param[in, optional] Event A handle to an event.
+ * \param[in, optional] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[out, optional] RootHandle A pointer to a handle that receives the root handle.
+ * \param[in, reserved] Reserved Reserved.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1017,22 +1112,21 @@ NtLoadKeyEx(
     _Out_opt_ PHANDLE RootHandle,
     _Reserved_ PVOID Reserved // previously PIO_STATUS_BLOCK
     );
-#endif
 
 #if (PHNT_VERSION >= PHNT_WINDOWS_10_20H1)
 // rev by tyranid
 /**
  * Loads a registry key from a file with extended parameters.
  *
- * @param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
- * @param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
- * @param[in] Flags The options to use when loading the key.
- * @param[in] ExtendedParameters A pointer to an array of extended parameters.
- * @param[in] ExtendedParameterCount The number of extended parameters.
- * @param[in, optional] DesiredAccess The access mask that specifies the desired access rights.
- * @param[out, optional] RootHandle A pointer to a handle that receives the root handle.
- * @param[in, reserved] Reserved Reserved.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] TargetKey A pointer to an OBJECT_ATTRIBUTES structure that specifies the target key.
+ * \param[in] SourceFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the source file.
+ * \param[in] Flags The options to use when loading the key.
+ * \param[in] ExtendedParameters A pointer to an array of extended parameters.
+ * \param[in] ExtendedParameterCount The number of extended parameters.
+ * \param[in, optional] DesiredAccess The access mask that specifies the desired access rights.
+ * \param[out, optional] RootHandle A pointer to a handle that receives the root handle.
+ * \param[in, reserved] Reserved Reserved.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1052,10 +1146,10 @@ NtLoadKey3(
 /**
  * Replaces a registry key.
  *
- * @param[in] NewFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the new file.
- * @param[in] TargetHandle A handle to the target key.
- * @param[in] OldFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the old file.
- * @return NTSTATUS Successful or errant status.
+ * \param[in] NewFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the new file.
+ * \param[in] TargetHandle A handle to the target key.
+ * \param[in] OldFile A pointer to an OBJECT_ATTRIBUTES structure that specifies the old file.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1069,9 +1163,9 @@ NtReplaceKey(
 /**
  * Saves the specified registry key to a file.
  *
- * @param KeyHandle Handle to the registry key.
- * @param FileHandle Handle to the file where the key will be saved.
- * @return NTSTATUS Successful or errant status.
+ * \param KeyHandle Handle to the registry key.
+ * \param FileHandle Handle to the file where the key will be saved.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1084,10 +1178,10 @@ NtSaveKey(
 /**
  * Saves the specified registry key to a file with a specified format.
  *
- * @param KeyHandle Handle to the registry key.
- * @param FileHandle Handle to the file where the key will be saved.
- * @param Format Format in which the key will be saved.
- * @return NTSTATUS Successful or errant status.
+ * \param KeyHandle Handle to the registry key.
+ * \param FileHandle Handle to the file where the key will be saved.
+ * \param Format Format in which the key will be saved.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1101,10 +1195,10 @@ NtSaveKeyEx(
 /**
  * Merges two registry keys and saves the result to a file.
  *
- * @param HighPrecedenceKeyHandle Handle to the high precedence registry key.
- * @param LowPrecedenceKeyHandle Handle to the low precedence registry key.
- * @param FileHandle Handle to the file where the merged key will be saved.
- * @return NTSTATUS Successful or errant status.
+ * \param HighPrecedenceKeyHandle Handle to the high precedence registry key.
+ * \param LowPrecedenceKeyHandle Handle to the low precedence registry key.
+ * \param FileHandle Handle to the file where the merged key will be saved.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1118,10 +1212,10 @@ NtSaveMergedKeys(
 /**
  * Restores a registry key from a file.
  *
- * @param KeyHandle Handle to the registry key.
- * @param FileHandle Handle to the file from which the key will be restored.
- * @param Flags Flags for the restore operation.
- * @return NTSTATUS Successful or errant status.
+ * \param KeyHandle Handle to the registry key.
+ * \param FileHandle Handle to the file from which the key will be restored.
+ * \param Flags Flags for the restore operation.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1135,8 +1229,8 @@ NtRestoreKey(
 /**
  * Unloads a registry key.
  *
- * @param TargetKey Pointer to the object attributes of the target key.
- * @return NTSTATUS Successful or errant status.
+ * \param TargetKey Pointer to the object attributes of the target key.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1145,14 +1239,13 @@ NtUnloadKey(
     _In_ POBJECT_ATTRIBUTES TargetKey
     );
 
-#if PHNT_VERSION >= PHNT_WINDOWS_SERVER_2003
 /**
  * Unloads a registry key with additional flags.
  *
- * @param TargetKey Pointer to the object attributes of the target key.
- * @param Flags Flags for the unload operation.
- * @return NTSTATUS Successful or errant status.
- * @remarks Valid flags are REG_FORCE_UNLOAD and REG_UNLOAD_LEGAL_FLAGS.
+ * \param TargetKey Pointer to the object attributes of the target key.
+ * \param Flags Flags for the unload operation.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks Valid flags are REG_FORCE_UNLOAD and REG_UNLOAD_LEGAL_FLAGS.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1161,14 +1254,13 @@ NtUnloadKey2(
     _In_ POBJECT_ATTRIBUTES TargetKey,
     _In_ ULONG Flags
     );
-#endif
 
 /**
  * Unloads a registry key and optionally signals an event.
  *
- * @param TargetKey Pointer to the object attributes of the target key.
- * @param Event Optional handle to an event to be signaled.
- * @return NTSTATUS Successful or errant status.
+ * \param TargetKey Pointer to the object attributes of the target key.
+ * \param Event Optional handle to an event to be signaled.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1181,17 +1273,17 @@ NtUnloadKeyEx(
 /**
  * Notifies of changes to a registry key.
  *
- * @param KeyHandle Handle to the registry key.
- * @param Event Optional handle to an event to be signaled.
- * @param ApcRoutine Optional APC routine to be called.
- * @param ApcContext Optional context for the APC routine.
- * @param IoStatusBlock Pointer to an IO status block.
- * @param CompletionFilter Filter for the types of changes to notify.
- * @param WatchTree Whether to watch the entire tree.
- * @param Buffer Optional buffer for change data.
- * @param BufferSize Size of the buffer.
- * @param Asynchronous Whether the operation is asynchronous.
- * @return NTSTATUS Successful or errant status.
+ * \param KeyHandle Handle to the registry key.
+ * \param Event Optional handle to an event to be signaled.
+ * \param ApcRoutine Optional APC routine to be called.
+ * \param ApcContext Optional context for the APC routine.
+ * \param IoStatusBlock Pointer to an IO status block.
+ * \param CompletionFilter Filter for the types of changes to notify.
+ * \param WatchTree Whether to watch the entire tree.
+ * \param Buffer Optional buffer for change data.
+ * \param BufferSize Size of the buffer.
+ * \param Asynchronous Whether the operation is asynchronous.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1212,19 +1304,19 @@ NtNotifyChangeKey(
 /**
  * Requests notification when a registry key or any of its subkeys changes.
  *
- * @param MasterKeyHandle A handle to an open key. The handle must be opened with the KEY_NOTIFY access right.
- * @param Count The number of subkeys under the key specified by the MasterKeyHandle parameter.
- * @param SubordinateObjects Pointer to an array of OBJECT_ATTRIBUTES structures, one for each subkey. This array can contain one OBJECT_ATTRIBUTES structure.
- * @param Event A handle to an event created by the caller. If Event is not NULL, the caller waits until the operation succeeds, at which time the event is signaled.
- * @param ApcRoutine A pointer to an asynchronous procedure call (APC) function supplied by the caller. If ApcRoutine is not NULL, the specified APC function executes after the operation completes.
- * @param ApcContext A pointer to a context supplied by the caller for its APC function. This value is passed to the APC function when it is executed. The Asynchronous parameter must be TRUE. If ApcContext is specified, the Event parameter must be NULL.
- * @param IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that contains the final status and information about the operation. For successful calls that return data, the number of bytes written to the Buffer parameter is supplied in the Information member of the IO_STATUS_BLOCK structure.
- * @param CompletionFilter A bitmap of operations that trigger notification. This parameter can be one or more of the following flags. REG_NOTIFY_CHANGE_NAME, REG_NOTIFY_CHANGE_ATTRIBUTES, REG_NOTIFY_CHANGE_LAST_SET, REG_NOTIFY_CHANGE_SECURITY.
- * @param WatchTree If this parameter is TRUE, the caller is notified about changes to all subkeys of the specified key. If this parameter is FALSE, the caller is notified only about changes to the specified key.
- * @param Buffer Reserved for system use. This parameter must be NULL.
- * @param BufferSize Reserved for system use. This parameter must be zero.
- * @param Asynchronous Whether the operation is asynchronous.
- * @return NTSTATUS Successful or errant status.
+ * \param MasterKeyHandle A handle to an open key. The handle must be opened with the KEY_NOTIFY access right.
+ * \param Count The number of subkeys under the key specified by the MasterKeyHandle parameter.
+ * \param SubordinateObjects Pointer to an array of OBJECT_ATTRIBUTES structures, one for each subkey. This array can contain one OBJECT_ATTRIBUTES structure.
+ * \param Event A handle to an event created by the caller. If Event is not NULL, the caller waits until the operation succeeds, at which time the event is signaled.
+ * \param ApcRoutine A pointer to an asynchronous procedure call (APC) function supplied by the caller. If ApcRoutine is not NULL, the specified APC function executes after the operation completes.
+ * \param ApcContext A pointer to a context supplied by the caller for its APC function. This value is passed to the APC function when it is executed. The Asynchronous parameter must be TRUE. If ApcContext is specified, the Event parameter must be NULL.
+ * \param IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that contains the final status and information about the operation. For successful calls that return data, the number of bytes written to the Buffer parameter is supplied in the Information member of the IO_STATUS_BLOCK structure.
+ * \param CompletionFilter A bitmap of operations that trigger notification. This parameter can be one or more of the following flags. REG_NOTIFY_CHANGE_NAME, REG_NOTIFY_CHANGE_ATTRIBUTES, REG_NOTIFY_CHANGE_LAST_SET, REG_NOTIFY_CHANGE_SECURITY.
+ * \param WatchTree If this parameter is TRUE, the caller is notified about changes to all subkeys of the specified key. If this parameter is FALSE, the caller is notified only about changes to the specified key.
+ * \param Buffer Reserved for system use. This parameter must be NULL.
+ * \param BufferSize Reserved for system use. This parameter must be zero.
+ * \param Asynchronous Whether the operation is asynchronous.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1247,9 +1339,9 @@ NtNotifyChangeMultipleKeys(
 /**
  * Queries the number of open subkeys of a registry key.
  *
- * @param TargetKey Pointer to the object attributes of the target key.
- * @param HandleCount Pointer to a variable to receive the handle count.
- * @return NTSTATUS Successful or errant status.
+ * \param TargetKey Pointer to the object attributes of the target key.
+ * \param HandleCount Pointer to a variable to receive the handle count.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1259,16 +1351,27 @@ NtQueryOpenSubKeys(
     _Out_ PULONG HandleCount
     );
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_SERVER_2003)
+typedef struct _KEY_PID_ARRAY
+{
+    HANDLE ProcessId;
+    UNICODE_STRING KeyName;
+} KEY_PID_ARRAY, *PKEY_PID_ARRAY;
+
+typedef struct _KEY_OPEN_SUBKEYS_INFORMATION
+{
+    ULONG Count;
+    KEY_PID_ARRAY KeyArray[1];
+} KEY_OPEN_SUBKEYS_INFORMATION, *PKEY_OPEN_SUBKEYS_INFORMATION;
+
 /**
  * Queries the open subkeys of a registry key with additional information.
  *
- * @param TargetKey Pointer to the object attributes of the target key.
- * @param BufferLength Length of the buffer.
- * @param Buffer Optional buffer to receive the subkey information.
- * @param RequiredSize Pointer to a variable to receive the required size.
- * @return NTSTATUS Successful or errant status.
- * @remarks Returns an array of KEY_OPEN_SUBKEYS_INFORMATION structures.
+ * \param TargetKey Pointer to the object attributes of the target key.
+ * \param BufferLength Length of the buffer.
+ * \param Buffer Optional buffer to receive the subkey information.
+ * \param RequiredSize Pointer to a variable to receive the required size.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks Returns an array of KEY_OPEN_SUBKEYS_INFORMATION structures.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1279,13 +1382,21 @@ NtQueryOpenSubKeysEx(
     _Out_writes_bytes_opt_(BufferLength) PVOID Buffer,
     _Out_ PULONG RequiredSize
     );
-#endif
+
+//
+// Boot condition flags (NtInitializeRegistry)
+//
+
+#define REG_INIT_BOOT_SM 0x0000
+#define REG_INIT_BOOT_SETUP 0x0001
+#define REG_INIT_BOOT_ACCEPTED_BASE 0x0002
+#define REG_INIT_BOOT_ACCEPTED_MAX (REG_INIT_BOOT_ACCEPTED_BASE + 999)
 
 /**
  * Initializes the registry.
  *
- * @param BootCondition Condition for the boot.
- * @return NTSTATUS Successful or errant status.
+ * \param BootCondition Condition for the boot.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1297,8 +1408,8 @@ NtInitializeRegistry(
 /**
  * Locks the registry key and prevents changes from being written to disk.
  *
- * @param KeyHandle Handle to the registry key.
- * @return NTSTATUS Successful or errant status.
+ * \param KeyHandle Handle to the registry key.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1310,9 +1421,9 @@ NtLockRegistryKey(
 /**
  * Locks the product activation keys.
  *
- * @param pPrivateVer Optional pointer to a private version variable.
- * @param pSafeMode Optional pointer to a safe mode variable.
- * @return NTSTATUS Successful or errant status.
+ * \param pPrivateVer Optional pointer to a private version variable.
+ * \param pSafeMode Optional pointer to a safe mode variable.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1322,12 +1433,11 @@ NtLockProductActivationKeys(
     _Out_opt_ ULONG *pSafeMode
     );
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_VISTA)
 /**
  * Freezes the registry and prevents changes from being flushed to disk.
  *
- * @param TimeOutInSeconds Timeout in seconds.
- * @return NTSTATUS Successful or errant status.
+ * \param TimeOutInSeconds Timeout in seconds.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1335,13 +1445,11 @@ NTAPI
 NtFreezeRegistry(
     _In_ ULONG TimeOutInSeconds
     );
-#endif
 
-#if (PHNT_VERSION >= PHNT_WINDOWS_VISTA)
 /**
  * Thaws the registry and enables flushing changes to disk.
  *
- * @return NTSTATUS Successful or errant status.
+ * \return NTSTATUS Successful or errant status.
  */
 NTSYSCALLAPI
 NTSTATUS
@@ -1349,19 +1457,21 @@ NTAPI
 NtThawRegistry(
     VOID
     );
-#endif
 
 #if (PHNT_VERSION >= PHNT_WINDOWS_10_RS1)
 /**
  * Creates a registry transaction.
  *
- * @param RegistryTransactionHandle Pointer to a variable to receive the handle.
- * @param DesiredAccess Desired access mask.
- * @param ObjAttributes Optional pointer to object attributes.
- * @param CreateOptions Reserved for future use.
- * @return NTSTATUS Successful or errant status.
+ * \param RegistryTransactionHandle Pointer to a variable to receive the handle.
+ * \param DesiredAccess Desired access mask.
+ * \param ObjAttributes Optional pointer to object attributes.
+ * \param CreateOptions Reserved for future use.
+ * \return NTSTATUS Successful or errant status.
  */
-NTSTATUS NtCreateRegistryTransaction(
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateRegistryTransaction(
     _Out_ HANDLE *RegistryTransactionHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_opt_ POBJECT_ATTRIBUTES ObjAttributes,
@@ -1373,12 +1483,15 @@ NTSTATUS NtCreateRegistryTransaction(
 /**
  * Opens a registry transaction.
  *
- * @param RegistryTransactionHandle Pointer to a variable to receive the handle.
- * @param DesiredAccess Desired access mask.
- * @param ObjAttributes Pointer to object attributes.
- * @return NTSTATUS Successful or errant status.
+ * \param RegistryTransactionHandle Pointer to a variable to receive the handle.
+ * \param DesiredAccess Desired access mask.
+ * \param ObjAttributes Pointer to object attributes.
+ * \return NTSTATUS Successful or errant status.
  */
-NTSTATUS NtOpenRegistryTransaction(
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtOpenRegistryTransaction(
     _Out_ HANDLE *RegistryTransactionHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjAttributes
@@ -1389,11 +1502,14 @@ NTSTATUS NtOpenRegistryTransaction(
 /**
  * Commits a registry transaction.
  *
- * @param RegistryTransactionHandle Handle to the registry transaction.
- * @param Flags Reserved for future use.
- * @return NTSTATUS Successful or errant status.
+ * \param RegistryTransactionHandle Handle to the registry transaction.
+ * \param Flags Reserved for future use.
+ * \return NTSTATUS Successful or errant status.
  */
-NTSTATUS NtCommitRegistryTransaction(
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCommitRegistryTransaction(
     _In_ HANDLE RegistryTransactionHandle,
     _Reserved_ ULONG Flags
     );
@@ -1403,14 +1519,17 @@ NTSTATUS NtCommitRegistryTransaction(
 /**
  * Rolls back a registry transaction.
  *
- * @param RegistryTransactionHandle Handle to the registry transaction.
- * @param Flags Reserved for future use.
- * @return NTSTATUS Successful or errant status.
+ * \param RegistryTransactionHandle Handle to the registry transaction.
+ * \param Flags Reserved for future use.
+ * \return NTSTATUS Successful or errant status.
  */
-NTSTATUS NtRollbackRegistryTransaction(
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtRollbackRegistryTransaction(
     _In_ HANDLE RegistryTransactionHandle,
     _Reserved_ ULONG Flags
     );
 #endif
 
-#endif
+#endif // _NTREGAPI_H

@@ -8,8 +8,12 @@
 #define _NTWOW64_H
 
 #if (PHNT_MODE != PHNT_MODE_KERNEL)
+#ifdef __has_include
+#if __has_include (<ntxcapi.h>)
 #include <ntxcapi.h>
-#endif
+#endif // __has_include
+#endif // __has_include
+#endif // (PHNT_MODE != PHNT_MODE_KERNEL)
 
 #define WOW64_SYSTEM_DIRECTORY "SysWOW64"
 #define WOW64_SYSTEM_DIRECTORY_U L"SysWOW64"
@@ -33,7 +37,9 @@ typedef enum _WOW64_SHARED_INFORMATION
     Wow64SharedPageEntriesCount
 } WOW64_SHARED_INFORMATION;
 
+//
 // 32-bit definitions
+//
 
 #define WOW64_POINTER(Type) ULONG
 
@@ -186,6 +192,23 @@ typedef struct _LDR_DATA_TABLE_ENTRY32
     LDR_HOT_PATCH_STATE HotPatchState;
 } LDR_DATA_TABLE_ENTRY32, *PLDR_DATA_TABLE_ENTRY32;
 
+typedef const LDR_DATA_TABLE_ENTRY32* PCLDR_DATA_TABLE_ENTRY32;
+
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, InMemoryOrderLinks) == 0x8, "LDR_DATA_TABLE_ENTRY32.InMemoryOrderLinks offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, InInitializationOrderLinks) == 0x10, "LDR_DATA_TABLE_ENTRY32.InInitializationOrderLinks offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, DllBase) == 0x18, "LDR_DATA_TABLE_ENTRY32.DllBase offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, EntryPoint) == 0x1c, "LDR_DATA_TABLE_ENTRY32.EntryPoint offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, SizeOfImage) == 0x20, "LDR_DATA_TABLE_ENTRY32.SizeOfImage offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, ObsoleteLoadCount) == 0x38, "LDR_DATA_TABLE_ENTRY32.ObsoleteLoadCount offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, TimeDateStamp) == 0x44, "LDR_DATA_TABLE_ENTRY32.TimeDateStamp offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, DdagNode) == 0x50, "LDR_DATA_TABLE_ENTRY32.DdagNode offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, ParentDllBase) == 0x60, "LDR_DATA_TABLE_ENTRY32.ParentDllBase offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, OriginalBase) == 0x80, "LDR_DATA_TABLE_ENTRY32.OriginalBase offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, BaseNameHashValue) == 0x90, "LDR_DATA_TABLE_ENTRY32.BaseNameHashValue offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, LoadReason) == 0x94, "LDR_DATA_TABLE_ENTRY32.LoadReason offset incorrect");
+static_assert(UFIELD_OFFSET(LDR_DATA_TABLE_ENTRY32, CheckSum) == 0xA8, "LDR_DATA_TABLE_ENTRY32.CheckSum offset incorrect");
+static_assert(sizeof(LDR_DATA_TABLE_ENTRY32) == 0xB8, "LDR_DATA_TABLE_ENTRY32 incorrect size");
+
 typedef struct _CURDIR32
 {
     UNICODE_STRING32 DosPath;
@@ -291,7 +314,10 @@ typedef struct _PEB32
             ULONG ProcessUsingVEH : 1;
             ULONG ProcessUsingVCH : 1;
             ULONG ProcessUsingFTH : 1;
-            ULONG ReservedBits0 : 27;
+            ULONG ProcessPreviouslyThrottled : 1;   // The process was previously throttled.
+            ULONG ProcessCurrentlyThrottled : 1;    // The process is currently throttled.
+            ULONG ProcessImagesHotPatched : 1;      // The process images are hot patched. // RS5
+            ULONG ReservedBits0 : 24;
         };
     };
     union
@@ -419,8 +445,6 @@ typedef struct _PEB32
     ULONGLONG ExtendedFeatureDisableMask; // since WIN11
 } PEB32, *PPEB32;
 
-//static_assert(sizeof(PEB32) == 0x460, "sizeof(PEB32) is incorrect"); // REDSTONE3
-//static_assert(sizeof(PEB32) == 0x470, "sizeof(PEB32) is incorrect"); // REDSTONE5
 static_assert(sizeof(PEB32) == 0x488, "sizeof(PEB32) is incorrect"); // WIN11
 
 // Note: Use PhGetProcessPeb32 instead. (dmex)
@@ -435,6 +459,28 @@ typedef struct _GDI_TEB_BATCH32
     WOW64_POINTER(ULONG_PTR) HDC;
     ULONG Buffer[GDI_BATCH_BUFFER_SIZE];
 } GDI_TEB_BATCH32, *PGDI_TEB_BATCH32;
+
+typedef struct tagSOleTlsData32
+{
+    WOW64_POINTER(PVOID) ThreadBase;
+    WOW64_POINTER(PVOID) SmAllocator;
+    ULONG ApartmentID;
+    ULONG Flags; // OLETLSFLAGS
+    LONG TlsMapIndex;
+    WOW64_POINTER(PVOID *) TlsSlot;
+    ULONG ComInits;
+    ULONG OleInits;
+    ULONG Calls;
+    WOW64_POINTER(PVOID) ServerCall; // was CallInfo before TH1
+    WOW64_POINTER(PVOID) CallObjectCache; // was FreeAsyncCall before TH1
+    WOW64_POINTER(PVOID) ContextStack; // was FreeClientCall before TH1
+    WOW64_POINTER(PVOID) ObjServer;
+    ULONG TIDCaller;
+    // ... (other fields are version-dependant)
+} SOleTlsData32, *PSOleTlsData32;
+
+// rev
+#define RPC_THREAD_POINTER_KEY32 0xABABABAB
 
 typedef struct _TEB32
 {
@@ -521,7 +567,7 @@ typedef struct _TEB32
 
     ULONG GuaranteedStackBytes;
     WOW64_POINTER(PVOID) ReservedForPerf;
-    WOW64_POINTER(PVOID) ReservedForOle;
+    WOW64_POINTER(PSOleTlsData32) ReservedForOle;
     ULONG WaitingOnLoaderLock;
     WOW64_POINTER(PVOID) SavedPriorityState;
     WOW64_POINTER(ULONG_PTR) ReservedForCodeCoverage;
@@ -592,11 +638,13 @@ static_assert(FIELD_OFFSET(TEB32, MuiImpersonation) == 0xfc4, "FIELD_OFFSET(TEB3
 static_assert(FIELD_OFFSET(TEB32, EffectiveContainerId) == 0xff0, "FIELD_OFFSET(TEB32, EffectiveContainerId) is incorrect");
 static_assert(sizeof(TEB32) == 0x1000, "sizeof(TEB32) is incorrect");
 
+//
 // Conversion
+//
 
 FORCEINLINE VOID UStr32ToUStr(
     _Out_ PUNICODE_STRING Destination,
-    _In_ PUNICODE_STRING32 Source
+    _In_ PCUNICODE_STRING32 Source
     )
 {
     Destination->Length = Source->Length;
@@ -606,7 +654,7 @@ FORCEINLINE VOID UStr32ToUStr(
 
 FORCEINLINE VOID UStrToUStr32(
     _Out_ PUNICODE_STRING32 Destination,
-    _In_ PUNICODE_STRING Source
+    _In_ PCUNICODE_STRING Source
     )
 {
     Destination->Length = Source->Length;
@@ -786,4 +834,4 @@ Wow64CurrentNativeTeb(
 #endif // _M_X64
 #endif // (PHNT_MODE != PHNT_MODE_KERNEL)
 
-#endif
+#endif // _NTWOW64_H

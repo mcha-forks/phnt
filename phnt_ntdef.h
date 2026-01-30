@@ -195,6 +195,7 @@ typedef PSTRING PUTF8_STRING;
 typedef const STRING *PCSTRING;
 typedef const ANSI_STRING *PCANSI_STRING;
 typedef const OEM_STRING *PCOEM_STRING;
+typedef const STRING *PCUTF8_STRING;
 
 typedef struct _UNICODE_STRING
 {
@@ -205,7 +206,28 @@ typedef struct _UNICODE_STRING
 
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
-#define RTL_CONSTANT_STRING(s) { sizeof((s)) - sizeof((s)[0]), sizeof((s)), (PWCH)(s) }
+#ifdef __cplusplus
+extern "C++"
+{
+template <size_t N> char _RTL_CONSTANT_STRING_type_check(const char  (&s)[N]);
+template <size_t N> char _RTL_CONSTANT_STRING_type_check(const WCHAR (&s)[N]);
+// __typeof would be desirable here instead of sizeof.
+template <size_t N> class _RTL_CONSTANT_STRING_remove_const_template_class;
+template <> class _RTL_CONSTANT_STRING_remove_const_template_class<sizeof(char)>  {public: typedef  char T; };
+template <> class _RTL_CONSTANT_STRING_remove_const_template_class<sizeof(WCHAR)> {public: typedef WCHAR T; };
+#define _RTL_CONSTANT_STRING_remove_const_macro(s) \
+    (const_cast<_RTL_CONSTANT_STRING_remove_const_template_class<sizeof((s)[0])>::T*>(s))
+}
+#else
+char _RTL_CONSTANT_STRING_type_check(const void *s);
+#define _RTL_CONSTANT_STRING_remove_const_macro(s) (s)
+#endif
+#define RTL_CONSTANT_STRING(s) \
+{ \
+    sizeof( s ) - sizeof( (s)[0] ), \
+    sizeof( s ) / (sizeof(_RTL_CONSTANT_STRING_type_check(s))), \
+    _RTL_CONSTANT_STRING_remove_const_macro(s) \
+}
 
 #define DECLARE_CONST_UNICODE_STRING(_var, _str) \
 const WCHAR _var ## _buffer[] = _str; \
@@ -269,6 +291,9 @@ typedef struct _STRING32
 typedef STRING32 UNICODE_STRING32, *PUNICODE_STRING32;
 typedef STRING32 ANSI_STRING32, *PANSI_STRING32;
 
+typedef const STRING32 *PCUNICODE_STRING32;
+typedef const STRING32 *PCANSI_STRING32;
+
 typedef struct _STRING64
 {
     USHORT Length;
@@ -278,6 +303,9 @@ typedef struct _STRING64
 
 typedef STRING64 UNICODE_STRING64, *PUNICODE_STRING64;
 typedef STRING64 ANSI_STRING64, *PANSI_STRING64;
+
+typedef const STRING64 *PCUNICODE_STRING64;
+typedef const STRING64 *PCANSI_STRING64;
 
 //
 // Object attributes
@@ -304,8 +332,8 @@ typedef struct _OBJECT_ATTRIBUTES
     HANDLE RootDirectory;
     PCUNICODE_STRING ObjectName;
     ULONG Attributes;
-    PVOID SecurityDescriptor; // PSECURITY_DESCRIPTOR;
-    PVOID SecurityQualityOfService; // PSECURITY_QUALITY_OF_SERVICE
+    PSECURITY_DESCRIPTOR SecurityDescriptor;
+    PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService;
 } OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
 
 typedef const OBJECT_ATTRIBUTES *PCOBJECT_ATTRIBUTES;
@@ -452,32 +480,32 @@ typedef struct _KSYSTEM_TIME
 #define PtrOffset(B,O) ((ULONG)((ULONG_PTR)(O) - (ULONG_PTR)(B)))
 #endif
 
-#ifndef ALIGN_UP_BY
-#define ALIGN_UP_BY(Address, Align) (((ULONG_PTR)(Address) + (Align) - 1) & ~((Align) - 1))
-#endif
-#ifndef ALIGN_UP_POINTER_BY
-#define ALIGN_UP_POINTER_BY(Pointer, Align) ((PVOID)ALIGN_UP_BY(Pointer, Align))
-#endif
-#ifndef ALIGN_UP
-#define ALIGN_UP(Address, Type) ALIGN_UP_BY(Address, sizeof(Type))
-#endif
-#ifndef ALIGN_UP_POINTER
-#define ALIGN_UP_POINTER(Pointer, Type) ((PVOID)ALIGN_UP(Pointer, Type))
-#endif
 #ifndef ALIGN_DOWN_BY
-#define ALIGN_DOWN_BY(Address, Align) ((ULONG_PTR)(Address) & ~((ULONG_PTR)(Align) - 1))
+#define ALIGN_DOWN_BY(Length, Alignment) ((ULONG_PTR)(Length) & ~((ULONG_PTR)(Alignment) - 1))
+#endif
+#ifndef ALIGN_UP_BY
+#define ALIGN_UP_BY(Length, Alignment) (ALIGN_DOWN_BY(((ULONG_PTR)(Length) + (Alignment) - 1), Alignment))
 #endif
 #ifndef ALIGN_DOWN_POINTER_BY
-#define ALIGN_DOWN_POINTER_BY(Pointer, Align) ((PVOID)ALIGN_DOWN_BY(Pointer, Align))
+#define ALIGN_DOWN_POINTER_BY(Address, Alignment) ((PVOID)((ULONG_PTR)(Address) & ~((ULONG_PTR)(Alignment) - 1)))
+#endif
+#ifndef ALIGN_UP_POINTER_BY
+#define ALIGN_UP_POINTER_BY(Address, Alignment) (ALIGN_DOWN_POINTER_BY(((ULONG_PTR)(Address) + (Alignment) - 1), Alignment))
 #endif
 #ifndef ALIGN_DOWN
-#define ALIGN_DOWN(Address, Type) ALIGN_DOWN_BY(Address, sizeof(Type))
+#define ALIGN_DOWN(Length, Type) ALIGN_DOWN_BY(Length, sizeof(Type))
+#endif
+#ifndef ALIGN_UP
+#define ALIGN_UP(Length, Type) ALIGN_UP_BY(Length, sizeof(Type))
 #endif
 #ifndef ALIGN_DOWN_POINTER
-#define ALIGN_DOWN_POINTER(Pointer, Type) ((PVOID)ALIGN_DOWN(Pointer, Type))
+#define ALIGN_DOWN_POINTER(Address, Type) ALIGN_DOWN_POINTER_BY(Address, sizeof(Type))
+#endif
+#ifndef ALIGN_UP_POINTER
+#define ALIGN_UP_POINTER(Address, Type) ALIGN_UP_POINTER_BY(Address, sizeof(Type))
 #endif
 #ifndef IS_ALIGNED
-#define IS_ALIGNED(Pointer, Alignment) ((((ULONG_PTR)(Pointer)) & ((Alignment) - 1)) == 0)
+#define IS_ALIGNED(Address, Alignment) ((((ULONG_PTR)(Address)) & ((Alignment) - 1)) == 0)
 #endif
 
 #ifndef PAGE_SIZE
@@ -504,7 +532,7 @@ typedef struct _KSYSTEM_TIME
 #define ADDRESS_AND_SIZE_TO_SPAN_PAGES(Address, Size) ((BYTE_OFFSET(Address) + ((SIZE_T)(Size)) + PAGE_MASK) >> PAGE_SHIFT)
 #endif
 #ifndef ROUND_TO_SIZE
-#define ROUND_TO_SIZE(Size, Alignment) ((((ULONG_PTR)(Size))+((Alignment)-1)) & ~(ULONG_PTR)((Alignment)-1))
+#define ROUND_TO_SIZE(Size, Alignment) ((((ULONG_PTR)(Size)) + ((Alignment) - 1)) & ~(ULONG_PTR)((Alignment) - 1))
 #endif
 #ifndef ROUND_TO_PAGES
 #define ROUND_TO_PAGES(Size) (((ULONG_PTR)(Size) + PAGE_MASK) & ~PAGE_MASK)
@@ -513,6 +541,231 @@ typedef struct _KSYSTEM_TIME
 #define BYTES_TO_PAGES(Size) (((Size) >> PAGE_SHIFT) + (((Size) & PAGE_MASK) != 0))
 #endif
 
+#ifdef _DEBUG
+
+#ifndef ASSERT
+#define ASSERT( exp ) \
+    ((!(exp)) ? \
+        (RtlAssert( (PVOID)#exp, (PVOID)__FILE__, __LINE__, NULL ),FALSE) : \
+        TRUE)
+#endif
+
+#ifndef ASSERTMSG
+#define ASSERTMSG( msg, exp ) \
+    ((!(exp)) ? \
+        (RtlAssert( (PVOID)#exp, (PVOID)__FILE__, __LINE__, (PSTR)msg ),FALSE) : \
+        TRUE)
+#endif
+
+#ifndef RTL_SOFT_ASSERT
+#define RTL_SOFT_ASSERT(_exp) \
+    ((!(_exp)) ? \
+        (DbgPrint("%s(%d): Soft assertion failed\n   Expression: %s\n", __FILE__, __LINE__, #_exp),FALSE) : \
+        TRUE)
+#endif
+
+#ifndef RTL_SOFT_ASSERTMSG
+#define RTL_SOFT_ASSERTMSG(_msg, _exp) \
+    ((!(_exp)) ? \
+        (DbgPrint("%s(%d): Soft assertion failed\n   Expression: %s\n   Message: %s\n", __FILE__, __LINE__, #_exp, (_msg)),FALSE) : \
+        TRUE)
+#endif
+
+#ifndef RTL_VERIFY
+#define RTL_VERIFY         ASSERT
+#endif
+#ifndef RTL_VERIFYMSG
+#define RTL_VERIFYMSG      ASSERTMSG
+#endif
+
+#ifndef RTL_SOFT_VERIFY
+#define RTL_SOFT_VERIFY    RTL_SOFT_ASSERT
+#endif
+#ifndef RTL_SOFT_VERIFYMSG
+#define RTL_SOFT_VERIFYMSG RTL_SOFT_ASSERTMSG
+#endif
+
+#else // _DEBUG
+
+#ifndef ASSERT
+#define ASSERT( exp )         ((void) 0)
+#endif
+#ifndef ASSERTMSG
+#define ASSERTMSG( msg, exp ) ((void) 0)
+#endif
+
+#ifndef RTL_SOFT_ASSERT
+#define RTL_SOFT_ASSERT(_exp)          ((void) 0)
+#endif
+#ifndef RTL_SOFT_ASSERTMSG
+#define RTL_SOFT_ASSERTMSG(_msg, _exp) ((void) 0)
+#endif
+
+#ifndef RTL_VERIFY
+#define RTL_VERIFY( exp )         ((exp) ? TRUE : FALSE)
+#endif
+#ifndef RTL_VERIFYMSG
+#define RTL_VERIFYMSG( msg, exp ) ((exp) ? TRUE : FALSE)
+#endif
+
+#ifndef RTL_SOFT_VERIFY
+#define RTL_SOFT_VERIFY(_exp)         ((_exp) ? TRUE : FALSE)
+#endif
+#ifndef RTL_SOFT_VERIFYMSG
+#define RTL_SOFT_VERIFYMSG(msg, _exp) ((_exp) ? TRUE : FALSE)
+#endif
+
+#endif // _DEBUG
+
+#ifndef RTL_ASSERT
+#define RTL_ASSERT    ASSERT
+#endif
+
+#ifndef RTL_ASSERTMSG
+#define RTL_ASSERTMSG ASSERTMSG
+#endif
+
+#ifndef NT_ANALYSIS_ASSUME
+#if defined(_PREFAST_)
+#define NT_ANALYSIS_ASSUME(_exp) _Analysis_assume_(_exp)
+#else // _PREFAST_
+#ifdef _DEBUG
+#define NT_ANALYSIS_ASSUME(_exp) ((void) 0)
+#else // _DEBUG
+#define NT_ANALYSIS_ASSUME(_exp) __noop(_exp)
+#endif // _DEBUG
+#endif // _PREFAST_
+#endif // NT_ANALYSIS_ASSUME
+
+#ifndef NT_ASSERT_ACTION
+#define NT_ASSERT_ACTION(_exp) \
+    ((!(_exp)) ? \
+        (__annotation(L"Debug", L"AssertFail", L## #_exp), \
+         DbgRaiseAssertionFailure(), FALSE) : \
+        TRUE)
+#endif
+
+#ifndef NT_ASSERTMSG_ACTION
+#define NT_ASSERTMSG_ACTION(_msg, _exp) \
+    ((!(_exp)) ? \
+        (__annotation(L"Debug", L"AssertFail", L##_msg), \
+         DbgRaiseAssertionFailure(), FALSE) : \
+        TRUE)
+#endif
+
+#ifndef NT_ASSERTMSGW_ACTION
+#define NT_ASSERTMSGW_ACTION(_msg, _exp) \
+    ((!(_exp)) ? \
+        (__annotation(L"Debug", L"AssertFail", _msg), \
+         DbgRaiseAssertionFailure(), FALSE) : \
+        TRUE)
+#endif
+
+#ifdef _DEBUG
+
+#ifndef NT_ASSERT_ASSUME
+#define NT_ASSERT_ASSUME(_exp) \
+    (NT_ANALYSIS_ASSUME(_exp), NT_ASSERT_ACTION(_exp))
+#endif
+#ifndef NT_ASSERTMSG_ASSUME
+#define NT_ASSERTMSG_ASSUME(_msg, _exp) \
+    (NT_ANALYSIS_ASSUME(_exp), NT_ASSERTMSG_ACTION(_msg, _exp))
+#endif
+#ifdef NT_ASSERTMSGW_ASSUME
+#define NT_ASSERTMSGW_ASSUME(_msg, _exp) \
+    (NT_ANALYSIS_ASSUME(_exp), NT_ASSERTMSGW_ACTION(_msg, _exp))
+#endif
+
+#ifndef NT_ASSERT_NOASSUME
+#define NT_ASSERT_NOASSUME     NT_ASSERT_ASSUME
+#endif
+#ifndef NT_ASSERTMSG_NOASSUME
+#define NT_ASSERTMSG_NOASSUME  NT_ASSERTMSG_ASSUME
+#endif
+#ifndef NT_ASSERTMSGW_NOASSUME
+#define NT_ASSERTMSGW_NOASSUME NT_ASSERTMSGW_ASSUME
+#endif
+
+#ifndef NT_VERIFY
+#define NT_VERIFY     NT_ASSERT
+#endif
+#ifndef NT_VERIFYMSG
+#define NT_VERIFYMSG  NT_ASSERTMSG
+#endif
+#ifndef NT_VERIFYMSGW
+#define NT_VERIFYMSGW NT_ASSERTMSGW
+#endif
+
+#else // _DEBUG
+
+#ifndef NT_ASSERT_ASSUME
+#define NT_ASSERT_ASSUME(_exp)           (NT_ANALYSIS_ASSUME(_exp), 0)
+#endif
+#ifndef NT_ASSERTMSG_ASSUME
+#define NT_ASSERTMSG_ASSUME(_msg, _exp)  (NT_ANALYSIS_ASSUME(_exp), 0)
+#endif
+#ifndef NT_ASSERTMSGW_ASSUME
+#define NT_ASSERTMSGW_ASSUME(_msg, _exp) (NT_ANALYSIS_ASSUME(_exp), 0)
+#endif
+
+#ifndef NT_ASSERT_NOASSUME
+#define NT_ASSERT_NOASSUME(_exp)           ((void) 0)
+#endif
+#ifndef NT_ASSERTMSG_NOASSUME
+#define NT_ASSERTMSG_NOASSUME(_msg, _exp)  ((void) 0)
+#endif
+#ifndef NT_ASSERTMSGW_NOASSUME
+#define NT_ASSERTMSGW_NOASSUME(_msg, _exp) ((void) 0)
+#endif
+
+#ifndef NT_VERIFY
+#define NT_VERIFY(_exp)           (NT_ANALYSIS_ASSUME(_exp), ((_exp) ? TRUE : FALSE))
+#endif
+#ifndef NT_VERIFYMSG
+#define NT_VERIFYMSG(_msg, _exp ) (NT_ANALYSIS_ASSUME(_exp), ((_exp) ? TRUE : FALSE))
+#endif
+#ifndef NT_VERIFYMSGW
+#define NT_VERIFYMSGW(_msg, _exp) (NT_ANALYSIS_ASSUME(_exp), ((_exp) ? TRUE : FALSE))
+#endif
+
+#endif // _DEBUG
+
+#ifndef NT_FRE_ASSERT
+#define NT_FRE_ASSERT(_exp)           (NT_ANALYSIS_ASSUME(_exp), NT_ASSERT_ACTION(_exp))
+#endif
+#ifndef NT_FRE_ASSERTMSG
+#define NT_FRE_ASSERTMSG(_msg, _exp)  (NT_ANALYSIS_ASSUME(_exp), NT_ASSERTMSG_ACTION(_msg, _exp))
+#endif
+#ifndef NT_FRE_ASSERTMSGW
+#define NT_FRE_ASSERTMSGW(_msg, _exp) (NT_ANALYSIS_ASSUME(_exp), NT_ASSERTMSGW_ACTION(_msg, _exp))
+#endif
+
+#ifdef NT_ASSERT_ALWAYS_ASSUMES
+
+#ifndef NT_ASSERT
+#define NT_ASSERT     NT_ASSERT_ASSUME
+#endif
+#ifndef NT_ASSERTMSG
+#define NT_ASSERTMSG  NT_ASSERTMSG_ASSUME
+#endif
+#ifndef NT_ASSERTMSGW
+#define NT_ASSERTMSGW NT_ASSERTMSGW_ASSUME
+#endif
+
+#else // NT_ASSERT_ALWAYS_ASSUMES
+
+#ifndef NT_ASSERT
+#define NT_ASSERT     NT_ASSERT_NOASSUME
+#endif
+#ifndef NT_ASSERTMSG
+#define NT_ASSERTMSG  NT_ASSERTMSG_NOASSUME
+#endif
+#ifndef NT_ASSERTMSGW
+#define NT_ASSERTMSGW NT_ASSERTMSGW_NOASSUME
+#endif
+
+#endif // NT_ASSERT_ALWAYS_ASSUMES
+
 #endif // _NTDEF_
 
-#endif
+#endif // _PHNT_NTDEF_H
